@@ -52,7 +52,8 @@ namespace HotAssembly
 
             //create a lambda with the New
             //Expression as body and our param object[] as arg
-            var lambda = Expression.Lambda<Instantiator<T>>(Expression.Convert(newExp, typeof(T)), param);
+//            var lambda = Expression.Lambda<Instantiator<T>>(Expression.Convert(newExp, typeof(T)), param);
+            var lambda = Expression.Lambda<Instantiator<T>>(newExp, param);
 
             //compile it
             var compiled = (Instantiator<T>) lambda.Compile();

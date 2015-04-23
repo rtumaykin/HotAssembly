@@ -18,6 +18,11 @@ namespace HotAssembly.UnitTests
         {
             var fp = new FakeProvider();
             var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
+            {
+                // let it jit compile
+                var z = ha.Instantiate("newfile.some", "1.1", new object());
+            }
+            
             var start = DateTime.Now;
             for (var i = 0; i < 1000000; i++)
             {
@@ -25,7 +30,7 @@ namespace HotAssembly.UnitTests
                 z.Compute();
             }
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
-            Assert.Pass("elapsed {0} ms", elapsed);
+            Assert.Pass("Total elapsed {0} ms.", elapsed);
             Debug.WriteLine("{0}", elapsed);
         }
     }

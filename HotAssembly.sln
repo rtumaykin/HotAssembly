@@ -28,6 +28,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HotAssembly.Computor", "Hot
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IComputor", "IComputor\IComputor.csproj", "{777215A7-E11D-4971-8B9B-BD98CD594A33}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkTest", "tests\BenchmarkTest\BenchmarkTest.csproj", "{0036DF61-C8A8-40CF-BF43-F6269241E727}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +64,10 @@ Global
 		{777215A7-E11D-4971-8B9B-BD98CD594A33}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{777215A7-E11D-4971-8B9B-BD98CD594A33}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{777215A7-E11D-4971-8B9B-BD98CD594A33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0036DF61-C8A8-40CF-BF43-F6269241E727}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0036DF61-C8A8-40CF-BF43-F6269241E727}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0036DF61-C8A8-40CF-BF43-F6269241E727}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0036DF61-C8A8-40CF-BF43-F6269241E727}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -74,5 +80,6 @@ Global
 		{CBA1FBCD-7D70-4E11-AA69-BF5728D5604A} = {B905B70A-CA2E-4604-B650-CBFF52D23CF4}
 		{70E4BC76-6994-4F79-91D3-4CC70ABC5A90} = {B905B70A-CA2E-4604-B650-CBFF52D23CF4}
 		{777215A7-E11D-4971-8B9B-BD98CD594A33} = {B905B70A-CA2E-4604-B650-CBFF52D23CF4}
+		{0036DF61-C8A8-40CF-BF43-F6269241E727} = {B905B70A-CA2E-4604-B650-CBFF52D23CF4}
 	EndGlobalSection
 EndGlobal
