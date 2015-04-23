@@ -1,9 +1,9 @@
 ﻿using System;
 using System.CodeDom.Compiler;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -11,48 +11,64 @@ using Ionic.Zip;
 
 namespace HotAssembly
 {
-    public class InstantiatorFactory
+    public class InstantiatorFactory<T>
     {
+        public delegate T Instantiator<T>(params object[] args);
+
         private readonly IPersistenceProvider _persistenceProvider;
 
-        private static ConcurrentDictionary<string, IInstantiator> _instantiators;
-        private static ConcurrentDictionary<string, IInstantiator> Instantiators
+        public static Instantiator<T> GetInstantiator<T>
+            (ConstructorInfo ctor)
+        {
+            var type = ctor.DeclaringType;
+            var paramsInfo = ctor.GetParameters();
+
+            //create a single param of type object[]
+            var param =
+                Expression.Parameter(typeof (object[]), "args");
+
+            var argsExp =
+                new Expression[paramsInfo.Length];
+
+            //pick each arg from the params array 
+            //and create a typed expression of them
+            for (var i = 0; i < paramsInfo.Length; i++)
+            {
+                var index = Expression.Constant(i);
+                var paramType = paramsInfo[i].ParameterType;
+
+                var paramAccessorExp =
+                    Expression.ArrayIndex(param, index);
+
+                var paramCastExp =
+                    Expression.Convert(paramAccessorExp, paramType);
+
+                argsExp[i] = paramCastExp;
+            }
+
+            //make a NewExpression that calls the
+            //ctor with the args we just created
+            var newExp = Expression.New(ctor, argsExp);
+
+            //create a lambda with the New
+            //Expression as body and our param object[] as arg
+            var lambda =
+                Expression.Lambda(typeof (Instantiator<T>), newExp, param);
+
+            //compile it
+            var compiled = (Instantiator<T>) lambda.Compile();
+            return compiled;
+        }
+
+        private static ConcurrentDictionary<string, Instantiator<T>> _instantiators;
+        private static ConcurrentDictionary<string, Instantiator<T>> Instantiators
         {
             get
             {
                 LazyInitializer.EnsureInitialized(ref _instantiators,
-                    () => new ConcurrentDictionary<string, IInstantiator>());
+                    () => new ConcurrentDictionary<string, Instantiator<T>>());
                 return _instantiators;
             }
-        }
-
-        private string GenerateInstantiatorCode(Type instanceType, string sourcePath)
-        {
-            var appDomainSetup = new AppDomainSetup
-            {
-                ApplicationBase = AppDomain.CurrentDomain.BaseDirectory,
-                DisallowBindingRedirects = false,
-                DisallowCodeDownload = true,
-                ConfigurationFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile
-            };
-
-            var workerAppDomain = AppDomain.CreateDomain("InstantiatorCodeBuilder", null, appDomainSetup);
-
-            try
-            {
-                var instantiatorCodeBuilder = (InstantiatorCodeBuilder) workerAppDomain.CreateInstanceAndUnwrap(
-                    typeof (InstantiatorCodeBuilder).Assembly.GetName().Name,
-                    typeof (InstantiatorCodeBuilder).FullName);
-
-
-                var codeBuilderResults = instantiatorCodeBuilder.GetInstantiatorCode(instanceType, sourcePath);
-                return codeBuilderResults;
-            }
-            finally
-            {
-                AppDomain.Unload(workerAppDomain);
-            }
-
         }
 
         public InstantiatorFactory(IPersistenceProvider persistenceProvider)
@@ -68,7 +84,7 @@ namespace HotAssembly
         /// <param name="version"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public T Instantiate<T>(string id, string version, object data)
+        public T Instantiate(string id, string version, object data)
         {
             // todo: add specific exception types
 
@@ -80,30 +96,30 @@ namespace HotAssembly
 
             var bundleId = string.Format("{0}.{1}", id, version);
 
-            IInstantiator instantiator;
+            Instantiator<T> instantiator;
             if (Instantiators.TryGetValue(bundleId, out instantiator)) 
-                return instantiator.Instantiate<T>(data);
+                return instantiator(data);
             
             // If we can't find an instantiator in the collection, let's create one. 
             // Even if a concurrent process already did so, then we will simply fail
             // In the worst case scenario we will end up with a few instances of the bound assembly, 
             // however it is very unlikely because at every step I will be checking on if it already exists
-            if (TryCreateInstantiator(typeof (T), bundleId, out instantiator))
+            if (TryCreateInstantiator(bundleId, out instantiator))
             {
                 if (instantiator == null)
                     throw new NullReferenceException("failed to obtain instantiator");
 
                 // now try to insert the instantiator. If it throws an exception then some other process have already done so.
                 if (Instantiators.TryAdd(bundleId, instantiator))
-                    return instantiator.Instantiate<T>(data);
+                    return instantiator(data);
             }
             if (!Instantiators.TryGetValue(bundleId, out instantiator))
                 throw new Exception("Failed to add an instantiator, and also failed to retrieve an instantiator");
 
-            return instantiator.Instantiate<T>(data);
+            return instantiator(data);
         }
 
-        private bool TryCreateInstantiator(Type instanceType, string bundleId, out IInstantiator instantiator)
+        private bool TryCreateInstantiator(string bundleId, out Instantiator<T> instantiator)
         {
             instantiator = null;
 
@@ -119,77 +135,35 @@ namespace HotAssembly
                     zip.ExtractAll(bundlePath, ExtractExistingFileAction.Throw);
                 }
 
-                var code = GenerateInstantiatorCode(instanceType, Path.Combine(bundlePath, bundleId + ".dll"));
-                var referencedAssemblies = new List<string>
-                {
-                    instanceType.Assembly.Location,
-                    typeof (IInstantiator).Assembly.Location,
-                    "System.Core.dll",
-                    "mscorlib.dll",
-                    "System.dll"
-                };
-
-                referencedAssemblies.AddRange(Directory.GetFiles(bundlePath, "*.dll", SearchOption.AllDirectories));
-
-                var compilerResults = CompileInstantiator(Path.Combine(bundlePath, bundleId + ".dll"), code, bundlePath,
-                    referencedAssemblies.GroupBy(s => s).Select(x => x.First()).ToArray());
-
-                if (compilerResults.Errors.Count > 0)
-                    throw new Exception("failed to compile");
-
+                Assembly instanceAssembly = null;
                 foreach (
                     var file in
-                        Directory.GetFiles(bundlePath, "*.dll", SearchOption.AllDirectories)
-                            .Where(file => file != compilerResults.PathToAssembly))
+                        Directory.GetFiles(bundlePath, "*.dll", SearchOption.AllDirectories))
                 {
-                    Assembly.LoadFrom(file);
+                    var assembly = Assembly.LoadFrom(file);
+                    if (file == Path.Combine(bundlePath, bundleId + ".dll"))
+                        instanceAssembly = assembly;
                 }
-                var instantiatorAssembly = Assembly.LoadFrom(compilerResults.PathToAssembly);
 
-                Type instantiatorType = instantiatorAssembly.DefinedTypes.First();
-
-                if (instantiatorType == null)
-
+                if (instanceAssembly == null)
                     return false;
-                var instantiatorConstructorInfo = instantiatorType.GetConstructor(new Type[] {});
-                if (instantiatorConstructorInfo != null)
-                {
-                    instantiator = instantiatorConstructorInfo.Invoke(new object[] {}) as IInstantiator;
-                }
+
+                var instanceRealType = instanceAssembly.DefinedTypes.First();
+                
+                if (instanceRealType == null)
+                    return false;
+
+                var ctor = instanceRealType.GetConstructor(new Type[] {});
+                if (ctor == null)
+                    return false;
+
+                instantiator = GetInstantiator<T>(ctor);
+
                 return true;
             }
             catch
             {
                 return false;
-            }
-        }
-
-        protected CompilerResults CompileInstantiator(string bundlePath, string code, string outputPath, string[] referencedAssemblies)
-        {
-            var appDomainSetup = new AppDomainSetup
-            {
-                ApplicationBase = AppDomain.CurrentDomain.BaseDirectory,
-                DisallowBindingRedirects = false,
-                DisallowCodeDownload = true,
-                ConfigurationFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile
-            };
-
-            var instantiatorFileName = Path.Combine(outputPath, string.Format("{0}.dll", Guid.NewGuid()));
-            var workerAppDomain = AppDomain.CreateDomain("Compiler", null, appDomainSetup);
-
-            try
-            {
-                var compiler = (Compiler)workerAppDomain.CreateInstanceAndUnwrap(
-                  typeof(Compiler).Assembly.GetName().Name,
-                  typeof(Compiler).FullName);
-
-
-                var compilerResults = compiler.Compile(code, false, instantiatorFileName, referencedAssemblies);
-                return compilerResults;
-            }
-            finally
-            {
-                AppDomain.Unload(workerAppDomain);
             }
         }
     }

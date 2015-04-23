@@ -46,8 +46,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Compiler.cs" />
-    <Compile Include="IInstantiator.cs" />
-    <Compile Include="InstantiatorCodeBuilder.cs" />
     <Compile Include="InstantiatorFactory.cs" />
     <Compile Include="IPersistenceProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
