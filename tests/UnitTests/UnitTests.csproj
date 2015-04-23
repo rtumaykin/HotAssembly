@@ -51,11 +51,17 @@
   <ItemGroup>
     <Compile Include="HotAssembly.UnitTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SqlPersistenceTests.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\source\HotAssembly.SqlPersistenceProvider\HotAssembly.SqlPersistenceProvider.csproj">
+      <Project>{8084A10C-7182-4AD2-89F7-0781A118D5EE}</Project>
+      <Name>HotAssembly.SqlPersistenceProvider</Name>
+    </ProjectReference>
     <ProjectReference Include="..\IComputer\IComputer.csproj">
       <Project>{777215A7-E11D-4971-8B9B-BD98CD594A33}</Project>
       <Name>IComputer</Name>

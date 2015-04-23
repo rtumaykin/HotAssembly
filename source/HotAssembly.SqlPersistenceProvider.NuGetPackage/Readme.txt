@@ -1,1 +1,1 @@
-﻿This is your NuGet package.
+﻿This package implements HotAssembly persistence provider for SQL server.

@@ -18,24 +18,24 @@
   </PropertyGroup>
   <Import Project="$(NuProjPath)\NuProj.props" Condition="Exists('$(NuProjPath)\NuProj.props')" />
   <PropertyGroup Label="Configuration">
-    <Id>HotAssembly.NuGetPackage</Id>
-    <Version>1.0.0</Version>
-    <Title>HotAssembly.NuGetPackage</Title>
-    <Authors>rtumaykin</Authors>
-    <Owners>rtumaykin</Owners>
-    <Summary>HotAssembly.NuGetPackage</Summary>
-    <Description>HotAssembly.NuGetPackage</Description>
-    <ReleaseNotes>
-    </ReleaseNotes>
-    <ProjectUrl>
-    </ProjectUrl>
-    <LicenseUrl>
-    </LicenseUrl>
-    <Copyright>Copyright © rtumaykin</Copyright>
-    <Tags>HotAssembly.NuGetPackage</Tags>
+    <Id>HotAssembly</Id>
+    <Version>0.9.0</Version>
+    <Title>HotAssembly</Title>
+    <Authors>Roman Tumaykin</Authors>
+    <Owners>Roman Tumaykin</Owners>
+    <Summary>This NuGet package contains the library that takes care of hot loading of the dlls into the application at run time. </Summary>
+    <Description>This NuGet package contains the library that takes care of hot loading of the dlls into the application at run time. </Description>
+    <ReleaseNotes>First beta release</ReleaseNotes>
+    <ProjectUrl>https://github.com/rtumaykin/HotAssembly/</ProjectUrl>
+    <LicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</LicenseUrl>
+    <Copyright>Copyright © 2015 Roman Tumaykin</Copyright>
+    <Tags>Late Binding</Tags>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Readme.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\HotAssembly\HotAssembly.csproj" />
   </ItemGroup>
   <Import Project="$(NuProjPath)\NuProj.targets" />
 </Project>
