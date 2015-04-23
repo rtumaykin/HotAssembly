@@ -52,8 +52,7 @@ namespace HotAssembly
 
             //create a lambda with the New
             //Expression as body and our param object[] as arg
-            var lambda =
-                Expression.Lambda(typeof (Instantiator<T>), newExp, param);
+            var lambda = Expression.Lambda<Instantiator<T>>(Expression.Convert(newExp, typeof(T)), param);
 
             //compile it
             var compiled = (Instantiator<T>) lambda.Compile();
@@ -88,7 +87,7 @@ namespace HotAssembly
         {
             // todo: add specific exception types
 
-            if (!Regex.IsMatch(id, @"^using (@?[a-z_A-Z]\w+(?:\.@?[a-z_A-Z]\w+)*);$"))
+            if (!Regex.IsMatch(id, @"^(@?[a-z_A-Z]\w+(?:\.@?[a-z_A-Z]\w+)*)$"))
                 throw new Exception(string.Format("invalid bundle id \"{0}\"", id));
 
             if(!Regex.IsMatch(version, @"^\d+(?:\.\d+)+$"))
@@ -111,7 +110,10 @@ namespace HotAssembly
 
                 // now try to insert the instantiator. If it throws an exception then some other process have already done so.
                 if (Instantiators.TryAdd(bundleId, instantiator))
-                    return instantiator(data);
+                {
+                    var ret = instantiator(data);
+                    return ret;
+                }
             }
             if (!Instantiators.TryGetValue(bundleId, out instantiator))
                 throw new Exception("Failed to add an instantiator, and also failed to retrieve an instantiator");
@@ -132,7 +134,7 @@ namespace HotAssembly
 
                 using (var zip = ZipFile.Read(Path.Combine(bundlePath, bundleId + ".zip")))
                 {
-                    zip.ExtractAll(bundlePath, ExtractExistingFileAction.Throw);
+                    zip.ExtractAll(bundlePath, ExtractExistingFileAction.DoNotOverwrite);
                 }
 
                 Assembly instanceAssembly = null;
@@ -153,7 +155,7 @@ namespace HotAssembly
                 if (instanceRealType == null)
                     return false;
 
-                var ctor = instanceRealType.GetConstructor(new Type[] {});
+                var ctor = instanceRealType.GetConstructors().First();
                 if (ctor == null)
                     return false;
 
