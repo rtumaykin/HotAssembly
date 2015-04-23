@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -17,8 +18,13 @@ namespace HotAssembly.UnitTests
         {
             var fp = new FakeProvider();
             var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
-            var z = ha.Instantiate("newfile.some", "1.1", new object());
-
+            var start = DateTime.Now;
+            for (var i = 0; i < 1000000; i++)
+            {
+                var z = ha.Instantiate("newfile.some", "1.1", new object());
+            }
+            var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
+            Debug.WriteLine("{0}", elapsed);
         }
     }
 
@@ -40,8 +46,7 @@ namespace HotAssembly.UnitTests
             using (var zip = new ZipFile())
             {
                 zip.AddFile(Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)), "");
-                zip.AddFile(
-                    @"C:\Development Projects\Personal\HotAssembly\HotAssembly.Computor\bin\Debug\IComputor.dll", "");
+                //zip.AddFile(@"C:\Development Projects\Personal\HotAssembly\HotAssembly.Computor\bin\Debug\IComputor.dll", "");
                 zip.Save(Path.Combine(destinationPath, string.Format("{0}.zip", bundleId)));
                 File.Delete(Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)));
             }
