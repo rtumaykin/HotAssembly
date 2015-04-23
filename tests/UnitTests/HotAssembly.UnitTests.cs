@@ -22,8 +22,10 @@ namespace HotAssembly.UnitTests
             for (var i = 0; i < 1000000; i++)
             {
                 var z = ha.Instantiate("newfile.some", "1.1", new object());
+                z.Compute();
             }
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
+            Assert.Pass("elapsed {0} ms", elapsed);
             Debug.WriteLine("{0}", elapsed);
         }
     }
@@ -38,11 +40,18 @@ namespace HotAssembly.UnitTests
                 File.Delete(file);
             }
 
-
+#if DEBUG
             File.Copy(
                 @"C:\Development Projects\Personal\HotAssembly\HotAssembly.Computor\bin\Debug\HotAssembly.Computor.dll",
                 Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)));
-
+#else
+            File.Copy(
+                @"C:\Development Projects\Personal\HotAssembly\HotAssembly.Computor\bin\Release\HotAssembly.Computor.dll",
+                Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)));
+#endif 
+            {
+                
+            }
             using (var zip = new ZipFile())
             {
                 zip.AddFile(Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)), "");
