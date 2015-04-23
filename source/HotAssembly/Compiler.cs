@@ -8,7 +8,7 @@ namespace HotAssembly
 {
     internal class Compiler : MarshalByRefObject
     {
-        public IEnumerable<CompilerError> Compile(string code, bool checkSyntaxOnly, string assemblyFullPath, string[] referencedAssemblies)
+        public CompilerResults Compile(string code, bool checkSyntaxOnly, string outputAssembly, string[] referencedAssemblies)
         {
             var result = new List<CompilerError>();
 
@@ -20,22 +20,14 @@ namespace HotAssembly
             };
             compilerParameters.ReferencedAssemblies.AddRange(referencedAssemblies);
             if (!checkSyntaxOnly)
-                compilerParameters.OutputAssembly = assemblyFullPath;
+                compilerParameters.OutputAssembly = outputAssembly;
 
             var providerOptions = new Dictionary<string, string> { { "CompilerVersion", "v4.0" } };
-            CodeDomProvider codeProvider = new CSharpCodeProvider(providerOptions);
 
-            using (codeProvider)
+            using (CodeDomProvider codeProvider = new CSharpCodeProvider(providerOptions))
             {
-                var results = codeProvider.CompileAssemblyFromSource(compilerParameters, code);
-
-                if (results.Errors.Count > 0)
-                {
-                    result.AddRange(results.Errors.Cast<CompilerError>());
-                }
+                return codeProvider.CompileAssemblyFromSource(compilerParameters, code);
             }
-
-            return result;
         }
     }
 }

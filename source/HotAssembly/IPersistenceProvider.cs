@@ -4,7 +4,7 @@ namespace HotAssembly
 {
     public interface IPersistenceProvider
     {
-        bool GetBundle(Guid bundleId, string localPath);
-        bool PersistBundle(Guid bundleId, string localPath);
+        bool GetBundle(string bundleId, string destinationPath);
+        bool PersistBundle(string bundleId, string sourcePath);
     }
 }
