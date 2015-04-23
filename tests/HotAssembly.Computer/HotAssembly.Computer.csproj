@@ -7,8 +7,8 @@
     <ProjectGuid>{70E4BC76-6994-4F79-91D3-4CC70ABC5A90}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>HotAssembly.Computor</RootNamespace>
-    <AssemblyName>HotAssembly.Computor</AssemblyName>
+    <RootNamespace>HotAssembly.Computer</RootNamespace>
+    <AssemblyName>HotAssembly.Computer</AssemblyName>
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -43,9 +43,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\IComputor\IComputor.csproj">
+    <ProjectReference Include="..\IComputer\IComputer.csproj">
       <Project>{777215A7-E11D-4971-8B9B-BD98CD594A33}</Project>
-      <Name>IComputor</Name>
+      <Name>IComputer</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -56,9 +56,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\IComputor\IComputor.csproj">
+    <ProjectReference Include="..\IComputer\IComputer.csproj">
       <Project>{777215A7-E11D-4971-8B9B-BD98CD594A33}</Project>
-      <Name>IComputor</Name>
+      <Name>IComputer</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\source\HotAssembly\HotAssembly.csproj">
       <Project>{C4C56266-06D1-42F8-9B64-E8F2CDD71CF7}</Project>

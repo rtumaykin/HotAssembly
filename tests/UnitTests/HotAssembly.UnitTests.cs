@@ -45,18 +45,18 @@ namespace HotAssembly.UnitTests
                 File.Delete(file);
             }
 
+            var config = 
 #if DEBUG
+                "Debug" 
+#else 
+                "Release" 
+#endif
+                ;
+
             File.Copy(
-                @"C:\Development Projects\Personal\HotAssembly\HotAssembly.Computor\bin\Debug\HotAssembly.Computor.dll",
+                new Uri(Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase), "../../../HotAssembly.Computer/bin", config, "HotAssembly.Computer.dll")).LocalPath,
                 Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)));
-#else
-            File.Copy(
-                @"C:\Development Projects\Personal\HotAssembly\HotAssembly.Computor\bin\Release\HotAssembly.Computor.dll",
-                Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)));
-#endif 
-            {
-                
-            }
+
             using (var zip = new ZipFile())
             {
                 zip.AddFile(Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)), "");

@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using HotAssembly;
-using HotAssembly.Computor;
+using HotAssembly.Computer;
 using NUnit.Framework;
 
 namespace BenchmarkTest
 {
     [TestFixture]
-    public class Class1
+    public class BaselineTest
     {
         [Test]
         public void LocalInvocation()
