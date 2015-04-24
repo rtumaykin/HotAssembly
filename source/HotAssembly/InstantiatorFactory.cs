@@ -4,9 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Threading;
 using Ionic.Zip;
+using Newtonsoft.Json;
 
 namespace HotAssembly
 {
@@ -16,8 +16,7 @@ namespace HotAssembly
 
         private readonly IPersistenceProvider _persistenceProvider;
 
-        public static Instantiator<T> GetInstantiator<T>
-            (ConstructorInfo ctor)
+        public static Instantiator<T> GetInstantiator<T> (ConstructorInfo ctor)
         {
             var type = ctor.DeclaringType;
             var paramsInfo = ctor.GetParameters();
@@ -79,23 +78,19 @@ namespace HotAssembly
         /// Creates an instance of a requested class
         /// </summary>
         /// <typeparam name="T">type of the interface or a base class to instantiate</typeparam>
-        /// <param name="id">id of the assembly to instantiate.</param>
-        /// <param name="version"></param>
+        /// <param name="bundleId">id of the assembly to instantiate.</param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public T Instantiate(string id, string version, object data)
+        public T Instantiate(string bundleId, object data)
         {
-            // todo: add specific exception types
+            if (bundleId.Contains('/'))
+                throw new InstantiatorException("Buldle Id should not contain forward slashes", null); 
 
-            if (!Regex.IsMatch(id, @"^(@?[a-z_A-Z]\w+(?:\.@?[a-z_A-Z]\w+)*)$"))
-                throw new Exception(string.Format("invalid bundle id \"{0}\"", id));
 
-            if(!Regex.IsMatch(version, @"^\d+(?:\.\d+)+$"))
-                throw new Exception(string.Format("invalid version id \"{0}\"", version));
-
-            var bundleId = string.Format("{0}.{1}", id, version);
 
             Instantiator<T> instantiator;
+            Exception instantiatorException;
+
             if (Instantiators.TryGetValue(bundleId, out instantiator)) 
                 return instantiator(data);
             
@@ -103,7 +98,7 @@ namespace HotAssembly
             // Even if a concurrent process already did so, then we will simply fail
             // In the worst case scenario we will end up with a few instances of the bound assembly, 
             // however it is very unlikely because at every step I will be checking on if it already exists
-            if (TryCreateInstantiator(bundleId, out instantiator))
+            instantiator = CreateInstantiator(bundleId);
             {
                 if (instantiator == null)
                     throw new NullReferenceException("failed to obtain instantiator");
@@ -115,58 +110,80 @@ namespace HotAssembly
                     return ret;
                 }
             }
+
+            // todo: need a better way of handling all kinds of errors
             if (!Instantiators.TryGetValue(bundleId, out instantiator))
-                throw new Exception("Failed to add an instantiator, and also failed to retrieve an instantiator");
+                throw new Exception("There is a problem with this package.");
 
             return instantiator(data);
         }
 
-        private bool TryCreateInstantiator(string bundleId, out Instantiator<T> instantiator)
+        private Instantiator<T> CreateInstantiator(string bundleId)
         {
-            instantiator = null;
+            var bundlePath = Path.Combine(Path.GetTempPath(), "HotAssembly", "Bundles", bundleId);
 
             try
             {
-                var bundlePath = string.Format("{0}\\HotAssembly\\Bundles\\{1}", Path.GetTempPath(), bundleId);
                 Directory.CreateDirectory(bundlePath);
-
                 _persistenceProvider.GetBundle(bundleId, bundlePath);
+            }
+            catch (Exception e)
+            {
+                throw new InstantiatorCreationException("Failed to retrieve bundle from the Persistence Provider", e, true);
+            }
 
+            try
+            {
                 using (var zip = ZipFile.Read(Path.Combine(bundlePath, bundleId + ".zip")))
                 {
                     zip.ExtractAll(bundlePath, ExtractExistingFileAction.DoNotOverwrite);
                 }
+            }
+            catch (Exception e)
+            {
+                throw new InstantiatorCreationException("Failed to unzip bundle", e, false);
+            }
 
-                Assembly instanceAssembly = null;
+            var manifestPath = Path.Combine(bundlePath, "manifest.json");
+            if (!File.Exists(manifestPath))
+                throw new InstantiatorCreationException(string.Format("Could not find manifest at \"{0}\"", manifestPath), null, true);
+
+            var manifest =
+                JsonConvert.DeserializeObject<Manifest>(File.ReadAllText(Path.Combine(bundlePath, "manifest.json")));
+
+            Assembly instanceAssembly = null;
                 foreach (
                     var file in
                         Directory.GetFiles(bundlePath, "*.dll", SearchOption.AllDirectories))
                 {
                     var assembly = Assembly.LoadFrom(file);
-                    if (file == Path.Combine(bundlePath, bundleId + ".dll"))
+                    // All referenced assemblies are in the subfolder "ReferencedAssemblies". 
+                    // In the root folder must only be an assembly that contains the class to instantiate
+                    if (Path.GetFileName(file) == manifest.AssemblyName)
                         instanceAssembly = assembly;
                 }
 
-                if (instanceAssembly == null)
-                    return false;
+            if (instanceAssembly == null)
+                throw new InstantiatorCreationException(
+                    string.Format("There was no assembly found on this path: \"{0}\"", bundlePath), null, true);
 
-                var instanceRealType = instanceAssembly.DefinedTypes.First();
-                
-                if (instanceRealType == null)
-                    return false;
 
-                var ctor = instanceRealType.GetConstructors().First();
+            var instanceRealType =
+                instanceAssembly.DefinedTypes.FirstOrDefault(
+                    info => info.IsClass && info.FullName == manifest.FullyQualifiedClassName);
+
+            if (instanceRealType == null)
+                throw new InstantiatorCreationException(
+                    string.Format("Type \"{0}\" was not found in assembly \"{1}\"", manifest.FullyQualifiedClassName,
+                        Path.Combine(bundlePath, manifest.FullyQualifiedClassName)), null, true);
+
+            // for siimplicity I only want the initialization done through a single object.  In the future I might expand to any type of constructor
+            var ctor = instanceRealType.GetConstructor(new[] {typeof (object)});
+
                 if (ctor == null)
-                    return false;
+                    throw new InstantiatorCreationException("Constructor with a single object argument was not found", null, true);
 
-                instantiator = GetInstantiator<T>(ctor);
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+                return GetInstantiator<T>(ctor);
         }
     }
 }

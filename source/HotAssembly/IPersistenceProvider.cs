@@ -1,10 +1,8 @@
-﻿using System;
-
-namespace HotAssembly
+﻿namespace HotAssembly
 {
     public interface IPersistenceProvider
     {
-        bool GetBundle(string bundleId, string destinationPath);
-        bool PersistBundle(string bundleId, string sourcePath);
+        void GetBundle(string bundleId, string destinationPath);
+        void PersistBundle(string bundleId, string sourcePath);
     }
 }

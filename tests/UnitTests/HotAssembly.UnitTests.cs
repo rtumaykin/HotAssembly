@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Ionic.Zip;
+using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace HotAssembly.UnitTests
@@ -20,13 +21,13 @@ namespace HotAssembly.UnitTests
             var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
             {
                 // let it jit compile
-                var z = ha.Instantiate("newfile.some", "1.1", new object());
+                var z = ha.Instantiate("newfile.some.1.1", new object());
             }
             
             var start = DateTime.Now;
             for (var i = 0; i < 1000000; i++)
             {
-                var z = ha.Instantiate("newfile.some", "1.1", new object());
+                var z = ha.Instantiate("newfile.some.1.1", new object());
                 z.Compute();
             }
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
@@ -38,7 +39,7 @@ namespace HotAssembly.UnitTests
     public class FakeProvider : IPersistenceProvider
     {
 
-        public bool GetBundle(string bundleId, string destinationPath)
+        public void GetBundle(string bundleId, string destinationPath)
         {
             foreach (var file in Directory.GetFiles(destinationPath, "*.*"))
             {
@@ -55,20 +56,27 @@ namespace HotAssembly.UnitTests
 
             File.Copy(
                 new Uri(Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase), "../../../HotAssembly.Computer/bin", config, "HotAssembly.Computer.dll")).LocalPath,
-                Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)));
+                Path.Combine(destinationPath, string.Format("{0}.test.dll", bundleId)));
+
+            var manifest = new
+            {
+                FullyQualifiedClassName = "HotAssembly.Computer.Computer",
+                AssemblyName = string.Format("{0}.test.dll", bundleId)
+            };
+
+            File.WriteAllText(Path.Combine(destinationPath, "manifest.json"), JsonConvert.SerializeObject(manifest));
 
             using (var zip = new ZipFile())
             {
-                zip.AddFile(Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)), "");
-                //zip.AddFile(@"C:\Development Projects\Personal\HotAssembly\HotAssembly.Computor\bin\Debug\IComputor.dll", "");
+                zip.AddFile(Path.Combine(destinationPath, string.Format("{0}.test.dll", bundleId)), "");
+                zip.AddFile(Path.Combine(destinationPath, "manifest.json"), "");
                 zip.Save(Path.Combine(destinationPath, string.Format("{0}.zip", bundleId)));
-                File.Delete(Path.Combine(destinationPath, string.Format("{0}.dll", bundleId)));
+                File.Delete(Path.Combine(destinationPath, string.Format("{0}.test.dll", bundleId)));
+                File.Delete(Path.Combine(destinationPath, "manifest.json"));
             }
-
-            return true;
         }
 
-        public bool PersistBundle(string bundleId, string sourcePath)
+        public void PersistBundle(string bundleId, string sourcePath)
         {
             throw new NotImplementedException();
         }
