@@ -86,8 +86,6 @@ namespace HotAssembly
             if (bundleId.Contains('/'))
                 throw new InstantiatorException("Buldle Id should not contain forward slashes", null); 
 
-
-
             Instantiator<T> instantiator;
             Exception instantiatorException;
 
@@ -98,22 +96,32 @@ namespace HotAssembly
             // Even if a concurrent process already did so, then we will simply fail
             // In the worst case scenario we will end up with a few instances of the bound assembly, 
             // however it is very unlikely because at every step I will be checking on if it already exists
-            instantiator = CreateInstantiator(bundleId);
+            try
             {
-                if (instantiator == null)
-                    throw new NullReferenceException("failed to obtain instantiator");
+                instantiator = CreateInstantiator(bundleId);
+            }
+            catch (InstantiatorCreationException ie)
+            {
+                if (ie.IsFatal)
+                    throw;
 
-                // now try to insert the instantiator. If it throws an exception then some other process have already done so.
-                if (Instantiators.TryAdd(bundleId, instantiator))
-                {
-                    var ret = instantiator(data);
-                    return ret;
-                }
+                // give it a little bit of time and retry
+                Thread.Sleep(100);
+
+                if (!Instantiators.TryGetValue(bundleId, out instantiator))
+                    throw new InstantiatorException("There is a problem with this package.", null);
             }
 
-            // todo: need a better way of handling all kinds of errors
-            if (!Instantiators.TryGetValue(bundleId, out instantiator))
-                throw new Exception("There is a problem with this package.");
+            // this should really never happen
+            if (instantiator == null)
+                throw new NullReferenceException("failed to obtain instantiator");
+
+            // now try to insert the instantiator. If it throws an exception then some other process have already done so.
+            if (Instantiators.TryAdd(bundleId, instantiator))
+            {
+                var ret = instantiator(data);
+                return ret;
+            }
 
             return instantiator(data);
         }
@@ -125,7 +133,7 @@ namespace HotAssembly
             try
             {
                 Directory.CreateDirectory(bundlePath);
-                _persistenceProvider.GetBundle(bundleId, bundlePath);
+                _persistenceProvider.GetBundle(bundleId, Path.Combine(bundlePath, bundleId + ".zip"));
             }
             catch (Exception e)
             {
