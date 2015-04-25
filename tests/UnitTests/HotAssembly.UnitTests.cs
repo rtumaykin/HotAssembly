@@ -15,6 +15,7 @@ namespace HotAssembly.UnitTests
     public class UnitTests
     {
         [Test]
+        // Before running this test compile HotAssembly.Computer project!!!
         public void Should_Successfully_Instantiate()
         {
             var fp = new FakeProvider();
