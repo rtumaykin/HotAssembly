@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Ionic.Zip;
 using Newtonsoft.Json;
@@ -58,14 +60,28 @@ namespace HotAssembly
             return compiled;
         }
 
-        private static ConcurrentDictionary<string, Instantiator<T>> _instantiators;
-        private static ConcurrentDictionary<string, Instantiator<T>> Instantiators
+        /// <summary>
+        /// Dictionary to store all of the cached instantiators. All of the possible variations of constructors will be in the Value part of this dictionary.
+        /// Key is the bundleId, and the second Dictionary is a concatenated Types for each constructor.
+        /// </summary>
+        private static Dictionary<string, Dictionary<string, Instantiator<T>>> _instantiators;
+        private static Dictionary<string, Dictionary<string, Instantiator<T>>> Instantiators
         {
             get
             {
                 LazyInitializer.EnsureInitialized(ref _instantiators,
-                    () => new ConcurrentDictionary<string, Instantiator<T>>());
+                    () => new Dictionary<string, Dictionary<string, Instantiator<T>>>());
                 return _instantiators;
+            }
+        }
+
+        private static ConcurrentDictionary<string, object> _instantiatorLocks;
+        private static ConcurrentDictionary<string, object> InstantiatorLocks
+        {
+            get
+            {
+                LazyInitializer.EnsureInitialized(ref _instantiatorLocks, () => new ConcurrentDictionary<string, object>());
+                return _instantiatorLocks;
             }
         }
 
@@ -74,6 +90,8 @@ namespace HotAssembly
             _persistenceProvider = persistenceProvider;
         }
 
+
+
         /// <summary>
         /// Creates an instance of a requested class
         /// </summary>
@@ -81,59 +99,101 @@ namespace HotAssembly
         /// <param name="bundleId">id of the assembly to instantiate.</param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public T Instantiate(string bundleId, object data)
+
+        public T Instantiate(string bundleId)
         {
-            if (bundleId.Contains('/'))
-                throw new InstantiatorException("Buldle Id should not contain forward slashes", null); 
-
-            Instantiator<T> instantiator;
-            Exception instantiatorException;
-
-            if (Instantiators.TryGetValue(bundleId, out instantiator)) 
-                return instantiator(data);
-            
-            // If we can't find an instantiator in the collection, let's create one. 
-            // Even if a concurrent process already did so, then we will simply fail
-            // In the worst case scenario we will end up with a few instances of the bound assembly, 
-            // however it is very unlikely because at every step I will be checking on if it already exists
-            try
-            {
-                instantiator = CreateInstantiator(bundleId);
-            }
-            catch (InstantiatorCreationException ie)
-            {
-                if (ie.IsFatal)
-                    throw;
-
-                // give it a little bit of time and retry
-                Thread.Sleep(100);
-
-                if (!Instantiators.TryGetValue(bundleId, out instantiator))
-                    throw new InstantiatorException("There is a problem with this package.", null);
-            }
-
-            // this should really never happen
-            if (instantiator == null)
-                throw new NullReferenceException("failed to obtain instantiator");
-
-            // now try to insert the instantiator. If it throws an exception then some other process have already done so.
-            if (Instantiators.TryAdd(bundleId, instantiator))
-            {
-                var ret = instantiator(data);
-                return ret;
-            }
-
-            return instantiator(data);
+            return Instantiate(bundleId, null);
         }
 
-        private Instantiator<T> CreateInstantiator(string bundleId)
+        public T Instantiate(string bundleId, object data)
         {
-            var bundlePath = Path.Combine(Path.GetTempPath(), "HotAssembly", "Bundles", bundleId);
+            return Instantiate(bundleId, new[] {data});
+        }
+        public T Instantiate(string bundleId, params object [] data)
+        {
+            if (Regex.IsMatch(bundleId, "[^a-zA-Z0-9_.-]"))
+                throw new InstantiatorException("Buldle Id should only contain letters, digits, dashes, underscores and dots.", null);
+
+            try
+            {
+                var instance = GetInstance(bundleId, data);
+                if (instance != null)
+                {
+                    return instance;
+                }
+
+                // OK. We did noit find an instantiator. Let's try to create one. First of all let's lock an object
+                var lockObject1 = new object();
+                lock (lockObject1)
+                {
+                    if (InstantiatorLocks.TryAdd(bundleId, lockObject1))
+                    {
+                        // if we ended up here, it means that we were first
+                        Instantiators.Add(bundleId, CreateInstantiatorsForBundle(bundleId));
+                    }
+                    else
+                    {
+                        // some other process have already created (or creating) instantiator
+                        // Theoretically, it is quite possible to have previous process fail, so we will need to be careful about assuming that if we got here,
+                        // then we should have instantiators.
+                        lock (InstantiatorLocks[bundleId])
+                        {
+                            // try read from the instantiators first. Maybe it has already been successfully created
+                            instance = GetInstance(bundleId, data);
+                            if (instance != null)
+                            {
+                                return instance;
+                            }
+                            Instantiators.Add(bundleId, CreateInstantiatorsForBundle(bundleId));
+                        }
+                    }
+                    instance = GetInstance(bundleId, data);
+                    if (instance != null)
+                    {
+                        return instance;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                throw new InstantiatorException("Error occurred during instantiation", e);
+            }
+
+            throw new InstantiatorException(string.Format("Unknown error. Instantiator failed to produce an instance of {0}", bundleId), null);
+        }
+
+        private static T GetInstance(string bundleId, object[] data)
+        {
+            if (Instantiators.ContainsKey(bundleId))
+            {
+                var instantiatorByType = Instantiators[bundleId];
+
+                // here it make sense to concatenate params
+                var paramsHash = string.Join(", ", data.Select(d => d.GetType().FullName));
+                if (instantiatorByType.ContainsKey(paramsHash))
+                {
+                    return instantiatorByType[paramsHash](data);
+                }
+                else
+                {
+                    throw new InstantiatorException(
+                        string.Format("Constructor signature {0} not found for bundle {1}", paramsHash, bundleId), null);
+                }
+            }
+            return default(T);
+        }
+
+        private Dictionary<string, Instantiator<T>> CreateInstantiatorsForBundle(string bundleId)
+        {
+            // I don't want to overwrite or conflict over the path. So I am randomizing everything
+            var bundlePath = Path.Combine(Path.GetTempPath(), "HotAssembly", "Bundles", bundleId,
+                Guid.NewGuid().ToString("N"));
+            var tempZipFileName = Path.GetTempFileName();
 
             try
             {
                 Directory.CreateDirectory(bundlePath);
-                _persistenceProvider.GetBundle(bundleId, Path.Combine(bundlePath, bundleId + ".zip"));
+                _persistenceProvider.GetBundle(bundleId, tempZipFileName);
             }
             catch (Exception e)
             {
@@ -142,7 +202,7 @@ namespace HotAssembly
 
             try
             {
-                using (var zip = ZipFile.Read(Path.Combine(bundlePath, bundleId + ".zip")))
+                using (var zip = ZipFile.Read(tempZipFileName))
                 {
                     zip.ExtractAll(bundlePath, ExtractExistingFileAction.DoNotOverwrite);
                 }
@@ -186,12 +246,16 @@ namespace HotAssembly
                         Path.Combine(bundlePath, manifest.FullyQualifiedClassName)), null, true);
 
             // for siimplicity I only want the initialization done through a single object.  In the future I might expand to any type of constructor
-            var ctor = instanceRealType.GetConstructor(new[] {typeof (object)});
+            var ctors = instanceRealType.GetConstructors();
 
-                if (ctor == null)
-                    throw new InstantiatorCreationException("Constructor with a single object argument was not found", null, true);
+            if (ctors == null || !ctors.Any())
+                throw new InstantiatorCreationException(
+                    string.Format("No public constructors for type {0} were found", instanceRealType), null, true);
 
-                return GetInstantiator<T>(ctor);
+            return
+                ctors.ToDictionary(
+                    ctor => string.Join(", ", ctor.GetParameters().Select(p => p.ParameterType.FullName)),
+                    ctor => GetInstantiator<T>(ctor));
         }
     }
 }

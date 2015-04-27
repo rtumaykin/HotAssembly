@@ -19,7 +19,7 @@
   <Import Project="$(NuProjPath)\NuProj.props" Condition="Exists('$(NuProjPath)\NuProj.props')" />
   <PropertyGroup Label="Configuration">
     <Id>HotAssembly</Id>
-    <Version>0.9.2</Version>
+    <Version>0.9.3</Version>
     <Title>HotAssembly</Title>
     <Authors>Roman Tumaykin</Authors>
     <Owners>Roman Tumaykin</Owners>

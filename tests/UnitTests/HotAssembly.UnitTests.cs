@@ -35,6 +35,49 @@ namespace HotAssembly.UnitTests
             Assert.Pass("Total elapsed {0} ms.", elapsed);
             Debug.WriteLine("{0}", elapsed);
         }
+    
+        [Test]
+        // Before running this test compile HotAssembly.Computer project!!!
+        public void Should_Successfully_Instantiate_Multithreaded()
+        {
+            var fp = new FakeProvider();
+            var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
+            var tasks = new List<Task>();
+
+            var start = DateTime.Now;
+            for (var i = 0; i < 1000000; i++)
+            {
+                tasks.Add(Task.Run(() =>
+                {
+                    var z = ha.Instantiate("newfile.some.1.1", new object());
+                    z.Compute();
+                }));
+            }
+            Task.WaitAll(tasks.ToArray());
+
+            var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
+            Assert.Pass("Total elapsed {0} ms.", elapsed);
+            Debug.WriteLine("{0}", elapsed);
+        }
+
+        [Test]
+        // Before running this test compile HotAssembly.Computer project!!!
+        public void Should_Fail_No_Ctor()
+        {
+            Exception e = null;
+            try
+            {
+                var fp = new FakeProvider();
+                var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
+                var z = ha.Instantiate("newfile.some.1.1");
+            }
+            catch (Exception ex)
+            {
+                e = ex;
+            }
+
+            Assert.IsNotNull(e);
+        }
     }
 
     public class FakeProvider : IPersistenceProvider
@@ -42,10 +85,8 @@ namespace HotAssembly.UnitTests
 
         public void GetBundle(string bundleId, string destinationPath)
         {
-            foreach (var file in Directory.GetFiles(destinationPath, "*.*"))
-            {
-                File.Delete(file);
-            }
+            var workingDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(workingDir);
 
             var config = 
 #if DEBUG
@@ -57,7 +98,7 @@ namespace HotAssembly.UnitTests
 
             File.Copy(
                 new Uri(Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase), "../../../HotAssembly.Computer/bin", config, "HotAssembly.Computer.dll")).LocalPath,
-                Path.Combine(destinationPath, string.Format("{0}.test.dll", bundleId)));
+                Path.Combine(workingDir, string.Format("{0}.test.dll", bundleId)));
 
             var manifest = new
             {
@@ -65,15 +106,13 @@ namespace HotAssembly.UnitTests
                 AssemblyName = string.Format("{0}.test.dll", bundleId)
             };
 
-            File.WriteAllText(Path.Combine(destinationPath, "manifest.json"), JsonConvert.SerializeObject(manifest));
+            File.WriteAllText(Path.Combine(workingDir, "manifest.json"), JsonConvert.SerializeObject(manifest));
 
             using (var zip = new ZipFile())
             {
-                zip.AddFile(Path.Combine(destinationPath, string.Format("{0}.test.dll", bundleId)), "");
-                zip.AddFile(Path.Combine(destinationPath, "manifest.json"), "");
-                zip.Save(Path.Combine(destinationPath, string.Format("{0}.zip", bundleId)));
-                File.Delete(Path.Combine(destinationPath, string.Format("{0}.test.dll", bundleId)));
-                File.Delete(Path.Combine(destinationPath, "manifest.json"));
+                zip.AddFile(Path.Combine(workingDir, string.Format("{0}.test.dll", bundleId)), "");
+                zip.AddFile(Path.Combine(workingDir, "manifest.json"), "");
+                zip.Save(destinationPath);
             }
         }
 
