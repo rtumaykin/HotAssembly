@@ -169,7 +169,7 @@ namespace HotAssembly
                 var instantiatorByType = Instantiators[bundleId];
 
                 // here it make sense to concatenate params
-                var paramsHash = string.Join(", ", data.Select(d => d.GetType().FullName));
+                var paramsHash = data == null || !data.Any() ? "" : string.Join(", ", data.Select(d => d.GetType().FullName));
                 if (instantiatorByType.ContainsKey(paramsHash))
                 {
                     return instantiatorByType[paramsHash](data);
@@ -254,7 +254,7 @@ namespace HotAssembly
 
             return
                 ctors.ToDictionary(
-                    ctor => string.Join(", ", ctor.GetParameters().Select(p => p.ParameterType.FullName)),
+                ctor => !ctor.GetParameters().Any() ? "" : string.Join(", ", ctor.GetParameters().Select(p => p.ParameterType.FullName)),
                     ctor => GetInstantiator<T>(ctor));
         }
     }
