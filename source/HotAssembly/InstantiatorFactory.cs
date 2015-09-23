@@ -2,12 +2,12 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Ionic.Zip;
 using Newtonsoft.Json;
 
 namespace HotAssembly
@@ -159,7 +159,7 @@ namespace HotAssembly
                 throw new InstantiatorException("Error occurred during instantiation", e);
             }
 
-            throw new InstantiatorException(string.Format("Unknown error. Instantiator failed to produce an instance of {0}", bundleId), null);
+            throw new InstantiatorException($"Unknown error. Instantiator failed to produce an instance of {bundleId}", null);
         }
 
         private static T GetInstance(string bundleId, object[] data)
@@ -177,7 +177,7 @@ namespace HotAssembly
                 else
                 {
                     throw new InstantiatorException(
-                        string.Format("Constructor signature {0} not found for bundle {1}", paramsHash, bundleId), null);
+                        $"Constructor signature {paramsHash} not found for bundle {bundleId}", null);
                 }
             }
             return default(T);
@@ -188,7 +188,7 @@ namespace HotAssembly
             // I don't want to overwrite or conflict over the path. So I am randomizing everything
             var bundlePath = Path.Combine(Path.GetTempPath(), "HotAssembly", "Bundles", bundleId,
                 Guid.NewGuid().ToString("N"));
-            var tempZipFileName = Path.GetTempFileName();
+            var tempZipFileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 
             try
             {
@@ -202,10 +202,7 @@ namespace HotAssembly
 
             try
             {
-                using (var zip = ZipFile.Read(tempZipFileName))
-                {
-                    zip.ExtractAll(bundlePath, ExtractExistingFileAction.DoNotOverwrite);
-                }
+                ZipFile.ExtractToDirectory(tempZipFileName, bundlePath);
             }
             catch (Exception e)
             {
@@ -214,7 +211,7 @@ namespace HotAssembly
 
             var manifestPath = Path.Combine(bundlePath, "manifest.json");
             if (!File.Exists(manifestPath))
-                throw new InstantiatorCreationException(string.Format("Could not find manifest at \"{0}\"", manifestPath), null, true);
+                throw new InstantiatorCreationException($"Could not find manifest at \"{manifestPath}\"", null, true);
 
             var manifest =
                 JsonConvert.DeserializeObject<Manifest>(File.ReadAllText(Path.Combine(bundlePath, "manifest.json")));
@@ -233,7 +230,7 @@ namespace HotAssembly
 
             if (instanceAssembly == null)
                 throw new InstantiatorCreationException(
-                    string.Format("There was no assembly found on this path: \"{0}\"", bundlePath), null, true);
+                    $"There was no assembly found on this path: \"{bundlePath}\"", null, true);
 
 
             var instanceRealType =
@@ -242,15 +239,14 @@ namespace HotAssembly
 
             if (instanceRealType == null)
                 throw new InstantiatorCreationException(
-                    string.Format("Type \"{0}\" was not found in assembly \"{1}\"", manifest.FullyQualifiedClassName,
-                        Path.Combine(bundlePath, manifest.FullyQualifiedClassName)), null, true);
+                    $"Type \"{manifest.FullyQualifiedClassName}\" was not found in assembly \"{Path.Combine(bundlePath, manifest.FullyQualifiedClassName)}\"", null, true);
 
             // for siimplicity I only want the initialization done through a single object.  In the future I might expand to any type of constructor
             var ctors = instanceRealType.GetConstructors();
 
             if (ctors == null || !ctors.Any())
                 throw new InstantiatorCreationException(
-                    string.Format("No public constructors for type {0} were found", instanceRealType), null, true);
+                    $"No public constructors for type {instanceRealType} were found", null, true);
 
             return
                 ctors.ToDictionary(

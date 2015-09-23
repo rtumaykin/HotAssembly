@@ -16,9 +16,9 @@ namespace HotAssembly.UnitTests
         {
             var sqlpl = new SqlPersistenceProvider();
             var uniq = Guid.NewGuid();
-            var srcPath = Path.Combine(Path.GetTempPath(), string.Format("{0:N}.txt", uniq));
+            var srcPath = Path.Combine(Path.GetTempPath(), $"{uniq:N}.txt");
             Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "dest"));
-            var destPath = Path.Combine(Path.GetTempPath(), "dest", string.Format("{0:N}.txt", uniq));
+            var destPath = Path.Combine(Path.GetTempPath(), "dest", $"{uniq:N}.txt");
             System.IO.File.WriteAllText(srcPath, uniq.ToString("N"));
             sqlpl.PersistBundle(uniq.ToString("N"), srcPath);
             sqlpl.GetBundle(uniq.ToString("N"), destPath);
