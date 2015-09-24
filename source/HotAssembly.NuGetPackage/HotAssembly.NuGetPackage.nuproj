@@ -19,7 +19,7 @@
   <Import Project="$(NuProjPath)\NuProj.props" Condition="Exists('$(NuProjPath)\NuProj.props')" />
   <PropertyGroup Label="Configuration">
     <Id>HotAssembly</Id>
-    <Version>0.9.5</Version>
+    <Version>0.9.6</Version>
     <Title>HotAssembly</Title>
     <Authors>Roman Tumaykin</Authors>
     <Owners>Roman Tumaykin</Owners>
@@ -30,6 +30,7 @@
     <LicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</LicenseUrl>
     <Copyright>Copyright © 2015 Roman Tumaykin</Copyright>
     <Tags>Late Binding</Tags>
+    <EmbedSourceFiles>true</EmbedSourceFiles>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Readme.txt" />
