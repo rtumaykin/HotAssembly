@@ -19,7 +19,6 @@
   <Import Project="$(NuProjPath)\NuProj.props" Condition="Exists('$(NuProjPath)\NuProj.props')" />
   <PropertyGroup Label="Configuration">
     <Id>HotAssembly.SqlPersistenceProvider</Id>
-    <Version>1.0.2</Version>
     <Title>HotAssembly SqlPersistenceProvider</Title>
     <Authors>Roman Tumaykin</Authors>
     <Owners>Roman Tumaykin</Owners>
@@ -31,6 +30,8 @@
     <LicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</LicenseUrl>
     <Copyright>Copyright © 2015 Roman Tumaykin</Copyright>
     <Tags>HotAssembly</Tags>
+    <EmbedSourceFiles>true</EmbedSourceFiles>
+    <Version>1.0.7</Version>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Readme.txt" />

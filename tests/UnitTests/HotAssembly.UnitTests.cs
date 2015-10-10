@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Ionic.Zip;
 using Newtonsoft.Json;
 using NUnit.Framework;
 
@@ -88,32 +88,27 @@ namespace HotAssembly.UnitTests
             var workingDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(workingDir);
 
-            var config = 
+            var config =
 #if DEBUG
                 "Debug" 
-#else 
-                "Release" 
+#else
+                "Release"
 #endif
                 ;
 
             File.Copy(
                 new Uri(Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase), "../../../HotAssembly.Computer/bin", config, "HotAssembly.Computer.dll")).LocalPath,
-                Path.Combine(workingDir, string.Format("{0}.test.dll", bundleId)));
+                Path.Combine(workingDir, $"{bundleId}.test.dll"));
 
             var manifest = new
             {
                 FullyQualifiedClassName = "HotAssembly.Computer.Computer",
-                AssemblyName = string.Format("{0}.test.dll", bundleId)
+                AssemblyName = $"{bundleId}.test.dll"
             };
 
             File.WriteAllText(Path.Combine(workingDir, "manifest.json"), JsonConvert.SerializeObject(manifest));
 
-            using (var zip = new ZipFile())
-            {
-                zip.AddFile(Path.Combine(workingDir, string.Format("{0}.test.dll", bundleId)), "");
-                zip.AddFile(Path.Combine(workingDir, "manifest.json"), "");
-                zip.Save(destinationPath);
-            }
+            ZipFile.CreateFromDirectory(workingDir, destinationPath);
         }
 
         public void PersistBundle(string bundleId, string sourcePath)
