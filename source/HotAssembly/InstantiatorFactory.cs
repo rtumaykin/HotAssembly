@@ -90,16 +90,12 @@ namespace HotAssembly
             _persistenceProvider = persistenceProvider;
         }
 
-
-
         /// <summary>
         /// Creates an instance of a requested class
         /// </summary>
         /// <typeparam name="T">type of the interface or a base class to instantiate</typeparam>
         /// <param name="bundleId">id of the assembly to instantiate.</param>
-        /// <param name="data"></param>
         /// <returns></returns>
-
         public T Instantiate(string bundleId)
         {
             return Instantiate(bundleId, null);
