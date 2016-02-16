@@ -11,34 +11,35 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>24c1749a-8649-4d2d-bb85-69ab068b5b33</ProjectGuid>
+    <ProjectGuid>f5b89734-28ae-43f6-8565-300aa794c546</ProjectGuid>
   </PropertyGroup>
   <PropertyGroup>
     <NuProjPath Condition=" '$(NuProjPath)' == '' ">$(MSBuildExtensionsPath)\NuProj\</NuProjPath>
   </PropertyGroup>
   <Import Project="$(NuProjPath)\NuProj.props" Condition="Exists('$(NuProjPath)\NuProj.props')" />
   <PropertyGroup Label="Configuration">
-    <Id>HotAssembly.SqlPersistenceProvider</Id>
-    <Title>HotAssembly SqlPersistenceProvider</Title>
-    <Authors>Roman Tumaykin</Authors>
-    <Owners>Roman Tumaykin</Owners>
-    <Summary>This package implements HotAssembly persistence provider for SQL server.</Summary>
-    <Description>This package implements HotAssembly persistence provider for SQL server.</Description>
+    <Id>HotAssembly.Computer.NugetPackage</Id>
+    <Version>1.0.0</Version>
+    <Title>HotAssembly.Computer.NugetPackage</Title>
+    <Authors>rtumaykin</Authors>
+    <Owners>rtumaykin</Owners>
+    <Summary>HotAssembly.Computer.NugetPackage</Summary>
+    <Description>HotAssembly.Computer.NugetPackage</Description>
     <ReleaseNotes>
     </ReleaseNotes>
-    <ProjectUrl>https://github.com/rtumaykin/HotAssembly</ProjectUrl>
-    <LicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</LicenseUrl>
-    <Copyright>Copyright © 2015 Roman Tumaykin</Copyright>
-    <Tags>HotAssembly</Tags>
+    <ProjectUrl>
+    </ProjectUrl>
+    <LicenseUrl>
+    </LicenseUrl>
+    <Copyright>Copyright © rtumaykin</Copyright>
+    <Tags>HotAssembly.Computer.NugetPackage</Tags>
     <EmbedSourceFiles>true</EmbedSourceFiles>
-    <Version>1.0.7</Version>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="Readme.txt" />
+    <Content Include="manifest.json" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\HotAssembly.NuGetPackage\HotAssembly.NuGetPackage.nuproj" />
-    <ProjectReference Include="..\HotAssembly.SqlPersistenceProvider\HotAssembly.SqlPersistenceProvider.csproj" />
+    <ProjectReference Include="..\HotAssembly.Computer\HotAssembly.Computer.csproj" />
   </ItemGroup>
   <Import Project="$(NuProjPath)\NuProj.targets" />
 </Project>

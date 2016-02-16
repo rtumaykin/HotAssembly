@@ -15,7 +15,7 @@ namespace BenchmarkTest
             for (int i = 0; i < 1000000; i++)
             {
                 var z = (IComputer) new Computer(null);
-                z.Compute();
+                var x = z.GetAppDomain();
             }
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
             Assert.Pass("elapsed {0} ms", elapsed);

@@ -9,9 +9,9 @@ namespace HotAssembly.Computer
             
         }
 
-        public int Compute()
+        public string GetAppDomain()
         {
-            return new Random().Next(1, 100);
+            return AppDomain.CurrentDomain.FriendlyName;
         }
     }
 }

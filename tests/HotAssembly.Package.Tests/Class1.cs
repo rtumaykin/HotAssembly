@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -30,7 +31,20 @@ namespace HotAssembly.Package.Tests
 
         private void CheckRetriever()
         {
-            res.Add(new NugetRetriever().Retrieve("HotAssembly"));
+            res.Add(new NugetPackageRetriever(new[]
+                {@"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug"}).Retrieve(
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HotAssemblyPackages"),
+                    "HotAssembly.Computer.NugetPackage"));
+        }
+
+        [Test]
+        public void GetOne()
+        {
+            var pak =
+                new NugetPackageRetriever(new[]
+                {@"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug"}).Retrieve(
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HotAssemblyPackages"),
+                    "HotAssembly.Computer.NugetPackage");
         }
     }
 }

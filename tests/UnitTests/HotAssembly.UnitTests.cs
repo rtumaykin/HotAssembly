@@ -6,6 +6,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HotAssembly.Package;
 using Newtonsoft.Json;
 using NUnit.Framework;
 
@@ -18,18 +19,18 @@ namespace HotAssembly.UnitTests
         // Before running this test compile HotAssembly.Computer project!!!
         public void Should_Successfully_Instantiate()
         {
-            var fp = new FakeProvider();
+            var fp = new NugetPackageRetriever(new [] {@"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug"});
             var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
             {
                 // let it jit compile
-                var z = ha.Instantiate("newfile.some.1.1", new object());
+                var z = ha.Instantiate("HotAssembly.Computer.NugetPackage", "1.0.0");
             }
             
             var start = DateTime.Now;
             for (var i = 0; i < 1000000; i++)
             {
-                var z = ha.Instantiate("newfile.some.1.1", new object());
-                z.Compute();
+                var z = ha.Instantiate("HotAssembly.Computer.NugetPackage", "1.0.0");
+                var x = z.GetAppDomain();
             }
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
             Assert.Pass("Total elapsed {0} ms.", elapsed);
@@ -40,7 +41,7 @@ namespace HotAssembly.UnitTests
         // Before running this test compile HotAssembly.Computer project!!!
         public void Should_Successfully_Instantiate_Multithreaded()
         {
-            var fp = new FakeProvider();
+            var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
             var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
             var tasks = new List<Task>();
 
@@ -49,8 +50,8 @@ namespace HotAssembly.UnitTests
             {
                 tasks.Add(Task.Run(() =>
                 {
-                    var z = ha.Instantiate("newfile.some.1.1", new object());
-                    z.Compute();
+                    var z = ha.Instantiate("HotAssembly.Computer.NugetPackage", "1.0.0");
+                    var x = z.GetAppDomain();
                 }));
             }
             Task.WaitAll(tasks.ToArray());
@@ -67,9 +68,10 @@ namespace HotAssembly.UnitTests
             Exception e = null;
             try
             {
-                var fp = new FakeProvider();
+                var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
                 var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
-                var z = ha.Instantiate("newfile.some.1.1");
+                var z = ha.Instantiate("HotAssembly.Computer.NugetPackage", "1.0.0", "asdf");
+                var x = z.GetAppDomain();
             }
             catch (Exception ex)
             {
@@ -77,43 +79,6 @@ namespace HotAssembly.UnitTests
             }
 
             Assert.IsNotNull(e);
-        }
-    }
-
-    public class FakeProvider : IPersistenceProvider
-    {
-
-        public void GetBundle(string bundleId, string destinationPath)
-        {
-            var workingDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(workingDir);
-
-            var config =
-#if DEBUG
-                "Debug" 
-#else
-                "Release"
-#endif
-                ;
-
-            File.Copy(
-                new Uri(Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase), "../../../HotAssembly.Computer/bin", config, "HotAssembly.Computer.dll")).LocalPath,
-                Path.Combine(workingDir, $"{bundleId}.test.dll"));
-
-            var manifest = new
-            {
-                FullyQualifiedClassName = "HotAssembly.Computer.Computer",
-                AssemblyName = $"{bundleId}.test.dll"
-            };
-
-            File.WriteAllText(Path.Combine(workingDir, "manifest.json"), JsonConvert.SerializeObject(manifest));
-
-            ZipFile.CreateFromDirectory(workingDir, destinationPath);
-        }
-
-        public void PersistBundle(string bundleId, string sourcePath)
-        {
-            throw new NotImplementedException();
         }
     }
 }

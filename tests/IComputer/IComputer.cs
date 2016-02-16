@@ -2,6 +2,6 @@
 {
     public interface IComputer
     {
-        int Compute();
+        string GetAppDomain();
     }
 }

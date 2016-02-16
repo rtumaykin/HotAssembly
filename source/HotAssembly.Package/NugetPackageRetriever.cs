@@ -6,9 +6,10 @@ using NuGet;
 namespace HotAssembly.Package
 {
     /// <summary>
-    /// NugetRetriever retrieves and stores locally a requested nuget package from a nuget repository
+    /// NugetPackageRetriever retrieves and stores locally a requested nuget package from a nuget repository
     /// </summary>
-    public class NugetRetriever : IRetriever
+    [Serializable]
+    public class NugetPackageRetriever : IPackageRetriever
     {
         private readonly string[] _repositories;
 
@@ -18,7 +19,7 @@ namespace HotAssembly.Package
         /// exist or not configured, it initialized with default NuGet Url
         /// "https://packages.nuget.org/api/v2"
         /// </summary>
-        public NugetRetriever()
+        public NugetPackageRetriever()
         {
             _repositories = new[] {"https://packages.nuget.org/api/v2"};
         }
@@ -26,23 +27,22 @@ namespace HotAssembly.Package
         /// This constructor initializes the class using a collection of Uri paths to the repositories
         /// </summary>
         /// <param name="repositories"></param>
-        public NugetRetriever(string[] repositories)
+        public NugetPackageRetriever(string[] repositories)
         {
             _repositories = repositories;
         }
 
-        public string Retrieve(string packageName, SemanticVersion version)
+        public string Retrieve(string rootPath, string packageId, SemanticVersion version)
         {
-            var basePath = Path.Combine(Path.GetTempPath(), "HotAssemblyRepositories");
-            Directory.CreateDirectory(basePath);
+            Directory.CreateDirectory(rootPath);
             foreach (var repositoryUri in _repositories)
             {
                 var repo = PackageRepositoryFactory.Default.CreateRepository(repositoryUri);
-                var package = version == null ? repo.FindPackage(packageName) : repo.FindPackage(packageName, version);
+                var package = version == null ? repo.FindPackage(packageId) : repo.FindPackage(packageId, version);
 
                 if (package != null)
                 {
-                    var packageDestinationFolder = Path.Combine(basePath, $"{package.Id}.{package.Version}");
+                    var packageDestinationFolder = Path.Combine(rootPath, $"{package.Id}.{package.Version}");
 
                     var now = DateTime.Now;
                     // ultimately either this or another process will end up creating this directory
@@ -62,7 +62,7 @@ namespace HotAssembly.Package
                                     try
                                     {
                                         // by now other process might have created this folder and unpacked the package
-                                        package.ExtractContents(new PhysicalFileSystem(basePath),
+                                        package.ExtractContents(new PhysicalFileSystem(rootPath),
                                             packageDestinationFolder);
 
                                         return packageDestinationFolder;
@@ -94,9 +94,9 @@ namespace HotAssembly.Package
             return null;
         }
 
-        public string Retrieve(string packageName)
+        public string Retrieve(string rootPath, string packageId)
         {
-            return Retrieve(packageName, null);
+            return Retrieve(rootPath, packageId, null);
         }
     }
 }
