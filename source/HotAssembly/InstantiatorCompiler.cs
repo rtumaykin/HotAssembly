@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,84 +8,42 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using HotAssembly.Package;
+using Microsoft.CSharp;
 using Newtonsoft.Json;
 using NuGet;
 
 namespace HotAssembly
 {
-    public delegate T Instantiator<T>(params object[] args);
-
-    public class InstantiatorCompiler<T> : MarshalByRefObject
+    public class InstantiatorCompiler<T> : MarshalByRefObject where T:class 
     {
-        private string _destinationPath;
-        private string _packageId;
-        private SemanticVersion _semanticVersion;
-        private IPackageRetriever _packageRetriever;
+        private readonly string _classAssemblyName;
+        private readonly string _fullyQualifiedClassName;
 
 
-        public InstantiatorCompiler(string destinationPath, IPackageRetriever packageRetriever, string packageId, SemanticVersion semanticVersion)
+        public InstantiatorCompiler(string classAssemblyName, string fullyQualifiedClassName)
         {
-            _destinationPath = destinationPath;
-            _packageRetriever = packageRetriever;
-            _packageId = packageId;
-            _semanticVersion = semanticVersion;
+            _classAssemblyName = classAssemblyName;
+            _fullyQualifiedClassName = fullyQualifiedClassName;
         }
 
-        public Dictionary<string, Instantiator<T>> CreateInstantiatorsForPackage()
+        public Dictionary<string, IInstantiator<T>> CreateInstantiatorsForPackage()
         {
-            string packagePath;
-            Directory.CreateDirectory(_destinationPath);
-
-            try
-            {
-                packagePath = _packageRetriever.Retrieve(_destinationPath, _packageId, _semanticVersion);
-            }
-            catch (Exception e)
-            {
-                throw new InstantiatorCreationException($"Package Retriever Failed to obtain the package {_packageId}.{_semanticVersion.ToNormalizedString()}", e, true);
-            }
-
-            if (string.IsNullOrWhiteSpace(packagePath))
-                throw new InstantiatorCreationException($"Package Retriever Failed to obtain the package {_packageId}.{_semanticVersion.ToNormalizedString()} from available sources", null, true);
-
-
-            var manifestPath = Path.Combine(packagePath, "manifest.json");
-            if (!File.Exists(manifestPath))
-                throw new InstantiatorCreationException($"Could not find manifest at \"{manifestPath}\"", null, true);
-
-            var manifest =
-                JsonConvert.DeserializeObject<PackageManifest>(File.ReadAllText(Path.Combine(packagePath, "manifest.json")));
-
-            // find the directory where the dlls are
-            var libPath = Directory.GetDirectories(Path.Combine(packagePath, "lib")).FirstOrDefault() ??
-                          Path.Combine(packagePath, "lib");
-
-            Assembly instanceAssembly = null;
-            foreach (
-                var file in
-                    Directory.GetFiles(libPath, "*.dll", SearchOption.TopDirectoryOnly))
-            {
-                if (Path.GetFileName(file) == manifest.ClassAssemblyName)
-                {
-                    var assembly = Assembly.LoadFrom(file);
-                    instanceAssembly = assembly;
-                }
-            }
-
-            if (instanceAssembly == null)
+            var assemblies = Directory.GetFileSystemEntries(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly);
+            var instanceAssemblyPath = assemblies.FirstOrDefault(a => Path.GetFileName(a) == _classAssemblyName);
+            if (string.IsNullOrWhiteSpace(instanceAssemblyPath))
                 throw new InstantiatorCreationException(
-                    $"There was no assembly found on this path: \"{packagePath}\"", null, true);
+                    $"There was no assembly found on this path: \"{AppDomain.CurrentDomain.BaseDirectory}\"", null, true);
 
+            var instanceAssembly = Assembly.LoadFrom(instanceAssemblyPath);
 
             var instanceRealType =
                 instanceAssembly.DefinedTypes.FirstOrDefault(
-                    info => info.IsClass && info.FullName == manifest.FullyQualifiedClassName);
+                    info => info.IsClass && info.FullName == _fullyQualifiedClassName);
 
             if (instanceRealType == null)
                 throw new InstantiatorCreationException(
-                    $"Type \"{manifest.FullyQualifiedClassName}\" was not found in assembly \"{Path.Combine(packagePath, manifest.FullyQualifiedClassName)}\"", null, true);
+                    $"Type \"{_fullyQualifiedClassName}\" was not found in assembly \"{instanceAssemblyPath}\"", null, true);
 
-            // for siimplicity I only want the initialization done through a single object.  In the future I might expand to any type of constructor
             var ctors = instanceRealType.GetConstructors();
 
             if (ctors == null || !ctors.Any())
@@ -94,49 +53,76 @@ namespace HotAssembly
             return
                 ctors.ToDictionary(
                 ctor => !ctor.GetParameters().Any() ? "" : string.Join(", ", ctor.GetParameters().Select(p => p.ParameterType.FullName)),
-                    ctor => GetInstantiator<T>(ctor));
+                    ctor => GetInstantiator(ctor, assemblies.ToArray()));
         }
-        public static Instantiator<T> GetInstantiator<T>(ConstructorInfo ctor)
+
+        public static IInstantiator<T> GetInstantiator(ConstructorInfo ctor, string[] referencedAssemblies)
         {
+            // step 1. Compile local instantiator - the true one.
+            // maybe here I will need to return (or pass) the class name to simplify the compilation
+            var localInstantiator = CreateLocalInstantiator(ctor, referencedAssemblies);
+
+            // step 2. Create a proxy class that will be sent back to main app domain as a reference.
+
+            // step 3. Create a class that will be sent back to the main appdomain - the one that implements the interface or class methods
+
             var type = ctor.DeclaringType;
             var paramsInfo = ctor.GetParameters();
 
-            //create a single param of type object[]
-            var param =
-                Expression.Parameter(typeof(object[]), "args");
+            var instantiatorCode =
+                $"[System.Serializable]" + "\r\n" +
+                $"public class instantiator_{Guid.NewGuid().ToString("N")} : System.MarshalByRefObject, HotAssembly.IInstantiator<{typeof(T).FullName}>" + "\r\n" +
+                "{" + "\r\n" + 
+                $"\tpublic {typeof (T).FullName} Instantiate(params object[] args) {{" + "\r\n" +
+                $"\t\tvar instance = ({typeof(T).FullName})System.AppDomain.CurrentDomain.CreateInstanceAndUnwrap(" + "\r\n" +
+                $"\t\t\t\"{type.Assembly.FullName}\"," + "\r\n" +
+                $"\t\t\t\"{type.FullName}\"," + "\r\n" +
+                "\t\t\tfalse," + "\r\n" +
+                "\t\t\tSystem.Reflection.BindingFlags.Default," + "\r\n" +
+                "\t\t\tnull," + "\r\n" +
+                "\t\t\targs," + "\r\n" +
+                "\t\t\tnull," + "\r\n" +
+                "\t\t\tnull); " + "\r\n" +
+                "\t\treturn instance;" + "\r\n" +
+                "\t}" + "\r\n" + 
+                "}";
 
-            var argsExp =
-                new Expression[paramsInfo.Length];
-
-            //pick each arg from the params array 
-            //and create a typed expression of them
-            for (var i = 0; i < paramsInfo.Length; i++)
+            var compilerParameters = new CompilerParameters
             {
-                var index = Expression.Constant(i);
-                var paramType = paramsInfo[i].ParameterType;
+                CompilerOptions = "/t:library /debug",
+                GenerateExecutable = false
+            };
 
-                var paramAccessorExp =
-                    Expression.ArrayIndex(param, index);
+            compilerParameters.ReferencedAssemblies.AddRange(referencedAssemblies);
+            compilerParameters.ReferencedAssemblies.AddRange(new []
+            {
+                typeof(T).Assembly.Location,
+                typeof(IInstantiator<T>).Assembly.Location,
+                "System.Core.dll",
+                "mscorlib.dll",
+                "System.dll"
+            });
+            compilerParameters.OutputAssembly = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.dll");
 
-                var paramCastExp =
-                    Expression.Convert(paramAccessorExp, paramType);
+            var providerOptions = new Dictionary<string, string> { { "CompilerVersion", "v4.0" } };
+            CodeDomProvider codeProvider = new CSharpCodeProvider(providerOptions);
 
-                argsExp[i] = paramCastExp;
+            using (codeProvider)
+            {
+                var results = codeProvider.CompileAssemblyFromSource(compilerParameters, instantiatorCode);
+
+                var invokedProxy = (IInstantiator<T>) AppDomain.CurrentDomain.CreateInstanceFromAndUnwrap(
+                    results.CompiledAssembly.Location,
+                    results.CompiledAssembly.GetTypes()[0].FullName);
+
+                return invokedProxy;
             }
 
-            //make a NewExpression that calls the
-            //ctor with the args we just created
-            var newExp = Expression.New(ctor, argsExp);
-
-            //create a lambda with the New
-            //Expression as body and our param object[] as arg
-            //            var lambda = Expression.Lambda<Instantiator<T>>(Expression.Convert(newExp, typeof(T)), param);
-            var lambda = Expression.Lambda<Instantiator<T>>(newExp, param);
-
-            //compile it
-            var compiled = lambda.Compile();
-            return compiled;
         }
 
+        private static IInstantiator<T> CreateLocalInstantiator(ConstructorInfo ctor, string[] referencedAssemblies)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

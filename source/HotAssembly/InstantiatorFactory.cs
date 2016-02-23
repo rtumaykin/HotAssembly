@@ -14,7 +14,7 @@ using NuGet;
 
 namespace HotAssembly
 {
-    public class InstantiatorFactory<T>
+    public class InstantiatorFactory<T> where T:class
     {
         private readonly IPackageRetriever _packageRetriever;
 
@@ -22,13 +22,13 @@ namespace HotAssembly
         /// Dictionary to store all of the cached instantiators. All of the possible variations of constructors will be in the Value part of this dictionary.
         /// Key is the packageId, and the second Dictionary is a concatenated Types for each constructor.
         /// </summary>
-        private static Dictionary<string, Dictionary<string, Instantiator<T>>> _instantiators;
-        private static Dictionary<string, Dictionary<string, Instantiator<T>>> Instantiators
+        private static Dictionary<string, Dictionary<string, IInstantiator<T>>> _instantiators;
+        private static Dictionary<string, Dictionary<string, IInstantiator<T>>> Instantiators
         {
             get
             {
                 LazyInitializer.EnsureInitialized(ref _instantiators,
-                    () => new Dictionary<string, Dictionary<string, Instantiator<T>>>());
+                    () => new Dictionary<string, Dictionary<string, IInstantiator<T>>>());
                 return _instantiators;
             }
         }
@@ -138,7 +138,7 @@ namespace HotAssembly
                 var paramsHash = data == null || !data.Any() ? "" : string.Join(", ", data.Select(d => d.GetType().FullName));
                 if (instantiatorByType.ContainsKey(paramsHash))
                 {
-                    return instantiatorByType[paramsHash](data);
+                    return instantiatorByType[paramsHash].Instantiate(data);
                 }
                 else
                 {
@@ -152,11 +152,39 @@ namespace HotAssembly
         private readonly string _rootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HotAssemblyPackages");
 
 
-        private Dictionary<string, Instantiator<T>> CreateInstantiatorsForPackage(string packageId, SemanticVersion semanticVersion)
+        private Dictionary<string, IInstantiator<T>> CreateInstantiatorsForPackage(string packageId, SemanticVersion semanticVersion)
         {
+            string packagePath;
+            Directory.CreateDirectory(_rootPath);
+
+            try
+            {
+                packagePath = _packageRetriever.Retrieve(_rootPath, packageId, semanticVersion);
+            }
+            catch (Exception e)
+            {
+                throw new InstantiatorCreationException($"Package Retriever Failed to obtain the package {packageId}.{semanticVersion.ToNormalizedString()}", e, true);
+            }
+
+            if (string.IsNullOrWhiteSpace(packagePath))
+                throw new InstantiatorCreationException($"Package Retriever Failed to obtain the package {packageId}.{semanticVersion.ToNormalizedString()} from available sources", null, true);
+
+
+            var manifestPath = Path.Combine(packagePath, "manifest.json");
+            if (!File.Exists(manifestPath))
+                throw new InstantiatorCreationException($"Could not find manifest at \"{manifestPath}\"", null, true);
+
+            var manifest =
+                JsonConvert.DeserializeObject<PackageManifest>(File.ReadAllText(Path.Combine(packagePath, "manifest.json")));
+
+            // find the directory where the dlls are
+            var libPath = Directory.GetDirectories(Path.Combine(packagePath, "lib")).FirstOrDefault() ??
+                          Path.Combine(packagePath, "lib");
+
+
             var appDomainSetup = new AppDomainSetup
             {
-                ApplicationBase = AppDomain.CurrentDomain.BaseDirectory,
+                ApplicationBase = libPath,
                 DisallowBindingRedirects = false,
                 DisallowCodeDownload = true,
                 ConfigurationFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile
@@ -164,17 +192,17 @@ namespace HotAssembly
 
             var workerAppDomain = AppDomain.CreateDomain($"{packageId}.{semanticVersion.ToNormalizedString()}", null, appDomainSetup);
 
-            //var compiler = (InstantiatorCompiler<T>) workerAppDomain.CreateInstanceAndUnwrap (
-            //    typeof (InstantiatorCompiler<T>).Assembly.GetName().Name,
-            //    typeof (InstantiatorCompiler<T>).FullName,
-            //    false,
-            //    BindingFlags.Default, 
-            //    null,
-            //    new object[] { _rootPath, _packageRetriever, packageId, semanticVersion },
-            //    null,
-            //    null);
+            var compiler = (InstantiatorCompiler<T>)workerAppDomain.CreateInstanceAndUnwrap(
+                typeof(InstantiatorCompiler<T>).Assembly.GetName().Name,
+                typeof(InstantiatorCompiler<T>).FullName,
+                false,
+                BindingFlags.Default,
+                null,
+                new object[] {manifest.ClassAssemblyName, manifest.FullyQualifiedClassName},
+                null,
+                null);
 
-            var compiler = new InstantiatorCompiler<T>(_rootPath, _packageRetriever, packageId, semanticVersion);
+            //var compiler = new InstantiatorCompiler<T>(_rootPath, _packageRetriever, packageId, semanticVersion);
 
             return compiler.CreateInstantiatorsForPackage();
         }

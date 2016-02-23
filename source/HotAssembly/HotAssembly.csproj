@@ -62,6 +62,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Compiler.cs" />
+    <Compile Include="IInstantiator.cs" />
     <Compile Include="InstantiatorCompiler.cs" />
     <Compile Include="InstantiatorCreationException.cs" />
     <Compile Include="InstantiatorException.cs" />
