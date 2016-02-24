@@ -62,7 +62,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Compiler.cs" />
+    <Compile Include="HotAssemblyResolver.cs" />
     <Compile Include="IInstantiator.cs" />
+    <Compile Include="InstantiatorBundle.cs" />
     <Compile Include="InstantiatorCompiler.cs" />
     <Compile Include="InstantiatorCreationException.cs" />
     <Compile Include="InstantiatorException.cs" />

@@ -191,9 +191,15 @@ namespace HotAssembly
             };
 
             var workerAppDomain = AppDomain.CreateDomain($"{packageId}.{semanticVersion.ToNormalizedString()}", null, appDomainSetup);
+            // add HotAssembly Path resolver
+            //var resolver = (HotAssemblyResolver) workerAppDomain.CreateInstanceFromAndUnwrap(
+            //    typeof (HotAssemblyResolver).Assembly.Location,
+            //    typeof (HotAssemblyResolver).FullName);
 
-            var compiler = (InstantiatorCompiler<T>)workerAppDomain.CreateInstanceAndUnwrap(
-                typeof(InstantiatorCompiler<T>).Assembly.GetName().Name,
+            //workerAppDomain.AssemblyResolve += resolver.Resolve;
+
+            var compiler = (InstantiatorCompiler<T>)workerAppDomain.CreateInstanceFromAndUnwrap(
+                typeof(InstantiatorCompiler<T>).Assembly.Location,
                 typeof(InstantiatorCompiler<T>).FullName,
                 false,
                 BindingFlags.Default,
@@ -206,5 +212,7 @@ namespace HotAssembly
 
             return compiler.CreateInstantiatorsForPackage();
         }
+
+
     }
 }
