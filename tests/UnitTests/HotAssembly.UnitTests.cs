@@ -70,7 +70,7 @@ namespace HotAssembly.UnitTests
             {
                 var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
                 var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
-                var z = ha.Instantiate("HotAssembly.Computer.NugetPackage", "1.0.0");
+                var z = ha.Instantiate("HotAssembly.Computer.NugetPackage", "1.0.0", 100);
                 var x = z.GetAppDomain();
             }
             catch (Exception ex)
