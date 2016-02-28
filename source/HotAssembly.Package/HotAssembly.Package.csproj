@@ -56,8 +56,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IPackageRetriever.cs" />
-    <Compile Include="PackageManifest.cs" />
     <Compile Include="NugetPackageRetriever.cs" />
+    <Compile Include="PackageManifest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

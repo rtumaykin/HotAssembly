@@ -6,8 +6,7 @@ using System.Threading.Tasks;
 
 namespace HotAssembly
 {
-    public interface IInstantiator<T> where T:class
+    public class HotAssemblyAttribute : Attribute
     {
-        T Instantiate(params object[] args);
     }
 }

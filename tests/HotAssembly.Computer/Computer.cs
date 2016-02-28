@@ -1,18 +1,15 @@
 ﻿using System;
+using System.IO;
+using Newtonsoft.Json;
 
 namespace HotAssembly.Computer
 {
     [Serializable]
     public class Computer : IComputer
     {
-        public Computer()
-        {
-            
-        }
-
         public string GetAppDomain()
         {
-            return AppDomain.CurrentDomain.FriendlyName;
+            return $"{JsonConvert.SerializeObject(GetType().Assembly.Location)}-FileName:{SomeOtherProcess.SomeThing.GetStuff()}";
         }
     }
 }

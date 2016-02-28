@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -14,21 +15,29 @@ using NuGet;
 
 namespace HotAssembly
 {
+    public delegate T Instantiator<T>(params object[] args);
+
     public class InstantiatorFactory<T> where T:class
     {
         private readonly IPackageRetriever _packageRetriever;
+
+        static InstantiatorFactory()
+        {
+            AppDomain.CurrentDomain.AssemblyResolve += AssemblyResolver.ResolveByFullAssemblyName;
+        } 
+
 
         /// <summary>
         /// Dictionary to store all of the cached instantiators. All of the possible variations of constructors will be in the Value part of this dictionary.
         /// Key is the packageId, and the second Dictionary is a concatenated Types for each constructor.
         /// </summary>
-        private static Dictionary<string, Dictionary<string, IInstantiator<T>>> _instantiators;
-        private static Dictionary<string, Dictionary<string, IInstantiator<T>>> Instantiators
+        private static Dictionary<string, Dictionary<string, Instantiator<T>>> _instantiators;
+        protected static Dictionary<string, Dictionary<string, Instantiator<T>>> Instantiators
         {
             get
             {
                 LazyInitializer.EnsureInitialized(ref _instantiators,
-                    () => new Dictionary<string, Dictionary<string, IInstantiator<T>>>());
+                    () => new Dictionary<string, Dictionary<string, Instantiator<T>>>());
                 return _instantiators;
             }
         }
@@ -138,7 +147,7 @@ namespace HotAssembly
                 var paramsHash = data == null || !data.Any() ? "" : string.Join(", ", data.Select(d => d.GetType().FullName));
                 if (instantiatorByType.ContainsKey(paramsHash))
                 {
-                    return instantiatorByType[paramsHash].Instantiate(data);
+                    return instantiatorByType[paramsHash](data);
                 }
                 else
                 {
@@ -152,7 +161,7 @@ namespace HotAssembly
         private readonly string _rootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HotAssemblyPackages");
 
 
-        private Dictionary<string, IInstantiator<T>> CreateInstantiatorsForPackage(string packageId, SemanticVersion semanticVersion)
+        private Dictionary<string, Instantiator<T>> CreateInstantiatorsForPackage(string packageId, SemanticVersion semanticVersion)
         {
             string packagePath;
             Directory.CreateDirectory(_rootPath);
@@ -169,50 +178,91 @@ namespace HotAssembly
             if (string.IsNullOrWhiteSpace(packagePath))
                 throw new InstantiatorCreationException($"Package Retriever Failed to obtain the package {packageId}.{semanticVersion.ToNormalizedString()} from available sources", null, true);
 
-
-            var manifestPath = Path.Combine(packagePath, "manifest.json");
-            if (!File.Exists(manifestPath))
-                throw new InstantiatorCreationException($"Could not find manifest at \"{manifestPath}\"", null, true);
-
-            var manifest =
-                JsonConvert.DeserializeObject<PackageManifest>(File.ReadAllText(Path.Combine(packagePath, "manifest.json")));
-
             // find the directory where the dlls are
             var libPath = Directory.GetDirectories(Path.Combine(packagePath, "lib")).FirstOrDefault() ??
                           Path.Combine(packagePath, "lib");
 
+            PackageManifest manifest = null;
 
-            var appDomainSetup = new AppDomainSetup
+            if (!File.Exists(Path.Combine(packagePath, "HotAssembly.json")))
+                throw new InstantiatorCreationException($"HotAssembly.json file was not found in the package {packageId}.{semanticVersion.ToNormalizedString()}", null, true);
+            try
             {
-                ApplicationBase = libPath,
-                DisallowBindingRedirects = false,
-                DisallowCodeDownload = true,
-                ConfigurationFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile
-            };
+                manifest =
+                    JsonConvert.DeserializeObject<PackageManifest>(
+                        File.ReadAllText(Path.Combine(packagePath, "HotAssembly.json")));
+            }
+            catch (Exception e)
+            {
+                throw new InstantiatorCreationException($"Failed to read from HotAssembly.json for package {packageId}.{semanticVersion.ToNormalizedString()}", e, true);
+            }
 
-            var workerAppDomain = AppDomain.CreateDomain($"{packageId}.{semanticVersion.ToNormalizedString()}", null, appDomainSetup);
-            // add HotAssembly Path resolver
-            //var resolver = (HotAssemblyResolver) workerAppDomain.CreateInstanceFromAndUnwrap(
-            //    typeof (HotAssemblyResolver).Assembly.Location,
-            //    typeof (HotAssemblyResolver).FullName);
+            var hotAssembly = AssemblyResolver.ResolveByClassName(libPath, manifest.ClassFullName);
 
-            //workerAppDomain.AssemblyResolve += resolver.Resolve;
+            if (hotAssembly == null)
+                throw new InstantiatorCreationException($"Unable to find class {manifest.ClassFullName} specified in HotAssembly.json in the package folder", null, true);
 
-            var compiler = (InstantiatorCompiler<T>)workerAppDomain.CreateInstanceFromAndUnwrap(
-                typeof(InstantiatorCompiler<T>).Assembly.Location,
-                typeof(InstantiatorCompiler<T>).FullName,
-                false,
-                BindingFlags.Default,
-                null,
-                new object[] {manifest.ClassAssemblyName, manifest.FullyQualifiedClassName},
-                null,
-                null);
+            var hotClass = hotAssembly.GetType(manifest.ClassFullName);
 
-            //var compiler = new InstantiatorCompiler<T>(_rootPath, _packageRetriever, packageId, semanticVersion);
+            if (hotClass.GetInterfaces().All(i => i != typeof (T)))
+                throw new InstantiatorCreationException($"Class {manifest.ClassFullName} specified in HotAssembly.json does not implement interface {typeof(T).FullName}", null, true);
 
-            return compiler.CreateInstantiatorsForPackage();
+            var ctors = hotClass.GetConstructors();
+
+            if (ctors == null || !ctors.Any())
+                throw new InstantiatorCreationException(
+                    $"No public constructors for type {manifest.ClassFullName} were found", null, true);
+
+            // add the base path to allowed paths
+            AssemblyResolver.AddPackageBasePath(libPath);
+
+            return
+                ctors.ToDictionary(
+                ctor => !ctor.GetParameters().Any() ? "" : string.Join(", ", ctor.GetParameters().Select(p => p.ParameterType.FullName)),
+                    GetInstantiator);
         }
 
+        public static Instantiator<T> GetInstantiator(ConstructorInfo ctor)
+        {
+            var type = ctor.DeclaringType;
+            var paramsInfo = ctor.GetParameters();
 
+            //create a single param of type object[]
+            var param =
+                Expression.Parameter(typeof(object[]), "args");
+
+            var argsExp =
+                new Expression[paramsInfo.Length];
+
+            //pick each arg from the params array 
+            //and create a typed expression of them
+            for (var i = 0; i < paramsInfo.Length; i++)
+            {
+                var index = Expression.Constant(i);
+                var paramType = paramsInfo[i].ParameterType;
+
+                var paramAccessorExp =
+                    Expression.ArrayIndex(param, index);
+
+                var paramCastExp =
+                    Expression.Convert(paramAccessorExp, paramType);
+
+                argsExp[i] = paramCastExp;
+            }
+
+            //make a NewExpression that calls the
+            //ctor with the args we just created
+            var newExp = Expression.New(ctor, argsExp);
+
+            //create a lambda with the New
+            //Expression as body and our param object[] as arg
+            //            var lambda = Expression.Lambda<Instantiator<T>>(Expression.Convert(newExp, typeof(T)), param);
+            var lambda = Expression.Lambda<Instantiator<T>>(newExp, param);
+
+            //compile it
+            var compiled = lambda.Compile();
+            return compiled;
+        }
     }
+
 }

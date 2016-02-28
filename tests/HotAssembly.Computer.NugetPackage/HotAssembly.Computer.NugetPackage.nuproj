@@ -36,10 +36,10 @@
     <EmbedSourceFiles>true</EmbedSourceFiles>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="manifest.json" />
+    <ProjectReference Include="..\HotAssembly.Computer\HotAssembly.Computer.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\HotAssembly.Computer\HotAssembly.Computer.csproj" />
+    <Content Include="HotAssembly.json" />
   </ItemGroup>
   <Import Project="$(NuProjPath)\NuProj.targets" />
 </Project>

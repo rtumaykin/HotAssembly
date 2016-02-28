@@ -50,9 +50,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="autogen.cs" />
     <Compile Include="HotAssembly.UnitTests.cs" />
-    <Compile Include="ComputerProxy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -63,10 +61,6 @@
     <ProjectReference Include="..\..\source\HotAssembly.Package\HotAssembly.Package.csproj">
       <Project>{a4abe676-d899-4d49-b0be-58d5c6238ac9}</Project>
       <Name>HotAssembly.Package</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\HotAssembly.Computer\HotAssembly.Computer.csproj">
-      <Project>{70E4BC76-6994-4F79-91D3-4CC70ABC5A90}</Project>
-      <Name>HotAssembly.Computer</Name>
     </ProjectReference>
     <ProjectReference Include="..\IComputer\IComputer.csproj">
       <Project>{777215A7-E11D-4971-8B9B-BD98CD594A33}</Project>

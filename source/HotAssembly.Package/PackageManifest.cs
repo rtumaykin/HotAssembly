@@ -8,7 +8,6 @@ namespace HotAssembly.Package
 {
     public class PackageManifest
     {
-        public string ClassAssemblyName { get; set; }
-        public string FullyQualifiedClassName { get; set; }
+        public string ClassFullName { get; set; }
     }
 }
