@@ -50,14 +50,17 @@ namespace HotAssembly
 
         public InstantiatorFactory(IPackageRetriever packageRetriever)
         {
+            if (!typeof(T).IsInterface)
+                throw new InstantiatorCreationException($"Only interface instantiation is supported. Type {typeof(T).FullName} is not an interface", null, true);
+
             _packageRetriever = packageRetriever;
         }
 
         /// <summary>
-        /// Creates an instance of a requested class
+        /// Creates an instance of a requested type
         /// </summary>
-        /// <typeparam name="T">type of the interface or a base class to instantiate</typeparam>
-        /// <param name="instantiatorKey">Full identifier of a class to instantiate including the package and version</param>
+        /// <typeparam name="T">type of the interface to instantiate</typeparam>
+        /// <param name="instantiatorKey">Full identifier of a type to instantiate including the package and version</param>
         /// <returns></returns>
         public T Instantiate(InstantiatorKey instantiatorKey)
         {
@@ -119,25 +122,20 @@ namespace HotAssembly
 
         private static T GetInstance(InstantiatorKey instantiatorKey, object[] data)
         {
+            if (!Instantiators.ContainsKey(instantiatorKey))
+                return default(T);
 
+            var instantiatorByType = Instantiators[instantiatorKey];
 
-            if (Instantiators.ContainsKey(instantiatorKey))
+            // here it make sense to concatenate params
+            var paramsHash = data == null || !data.Any() ? "" : string.Join(", ", data.Select(d => d.GetType().FullName));
+            if (instantiatorByType.ContainsKey(paramsHash))
             {
-                var instantiatorByType = Instantiators[instantiatorKey];
-
-                // here it make sense to concatenate params
-                var paramsHash = data == null || !data.Any() ? "" : string.Join(", ", data.Select(d => d.GetType().FullName));
-                if (instantiatorByType.ContainsKey(paramsHash))
-                {
-                    return instantiatorByType[paramsHash](data);
-                }
-                else
-                {
-                    throw new InstantiatorException(
-                        $"Constructor signature {paramsHash} not found for package {instantiatorKey}", null);
-                }
+                return instantiatorByType[paramsHash](data);
             }
-            return default(T);
+
+            throw new InstantiatorException(
+                $"Constructor signature {paramsHash} not found for package {instantiatorKey}", null);
         }
 
         private readonly string _rootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HotAssemblyPackages");

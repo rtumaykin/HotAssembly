@@ -94,6 +94,22 @@ namespace HotAssembly.UnitTests
                     "HotAssembly.Computer.Computer1"));
             var x1 = z1.GetAppDomain();
         }
+        [Test]
+        public void Should_Fail_Not_Interface()
+        {
+            Exception e = null;
+            try
+            {
+                var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
+                var ha = new HotAssembly.InstantiatorFactory<UnitTests>(fp);
+            }
+            catch (InstantiatorCreationException ex)
+            {
+                e = ex;
+            }
+
+            Assert.IsNotNull(e);
+        }
     }
 }
 

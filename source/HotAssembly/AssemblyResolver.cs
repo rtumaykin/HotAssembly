@@ -86,7 +86,7 @@ namespace HotAssembly
                 var files = Directory.GetFiles(basePath, "*.*");
                 return files.Where(
                     p =>
-                        instanceInNewDomain.DoesAssemblyContainClassOrHotAssemblyAttributeOfRequestedType(p,
+                        instanceInNewDomain.DoesAssemblyContainTypesImplementingRequestedInterface(p,
                             interfaceToLookFor))
                     .Select(assemblyPath => Assembly.LoadFile(assemblyPath))
                     .ToArray();
@@ -101,7 +101,7 @@ namespace HotAssembly
 
     internal class ResolverAppDomainAgent : MarshalByRefObject
     {
-        internal bool DoesAssemblyContainClassOrHotAssemblyAttributeOfRequestedType
+        internal bool DoesAssemblyContainTypesImplementingRequestedInterface
             (string filePath, Type inerfaceTypeToSearchFor)
         {
             try
