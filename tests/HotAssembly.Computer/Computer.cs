@@ -9,7 +9,16 @@ namespace HotAssembly.Computer
     {
         public string GetAppDomain()
         {
-            return $"{JsonConvert.SerializeObject(GetType().Assembly.Location)}-FileName:{SomeOtherProcess.SomeThing.GetStuff()}";
+            return $"{JsonConvert.SerializeObject(GetType().Assembly.Location)}-//{GetType()}!!!//FileName:{SomeOtherProcess.SomeThing.GetStuff()}";
+        }
+    }
+
+    [HotAssembly]
+    public class Computer1 : IComputer
+    {
+        public string GetAppDomain()
+        {
+            return $"{JsonConvert.SerializeObject(GetType().Assembly.Location)}-//{GetType()}!!!//FileName:{SomeOtherProcess.SomeThing.GetStuff()}";
         }
     }
 }

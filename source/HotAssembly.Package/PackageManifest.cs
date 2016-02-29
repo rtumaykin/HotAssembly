@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace HotAssembly.Package
 {
+    [Serializable]
     public class PackageManifest
     {
         public string ClassFullName { get; set; }

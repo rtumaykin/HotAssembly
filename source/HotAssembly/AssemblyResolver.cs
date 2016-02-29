@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using HotAssembly.Package;
 
 namespace HotAssembly
 {
@@ -65,11 +66,9 @@ namespace HotAssembly
             }
         }
 
-
-        public static Assembly ResolveByClassName(string basePath, string classFullName)
+        public static Assembly[] DiscoverHotAssemblies(string basePath, PackageManifest[] manifests, Type interfaceToLookFor)
         {
             AppDomain newDomain = null;
-
             try
             {
                 var newDomainSetup = new AppDomainSetup()
@@ -79,8 +78,8 @@ namespace HotAssembly
 
                 newDomain = AppDomain.CreateDomain(Guid.NewGuid().ToString("N"), null, newDomainSetup);
                 var instanceInNewDomain = (ResolverAppDomainAgent) newDomain.CreateInstanceFromAndUnwrap(
-                    typeof(ResolverAppDomainAgent).Assembly.Location,
-                    typeof(ResolverAppDomainAgent).FullName,
+                    typeof (ResolverAppDomainAgent).Assembly.Location,
+                    typeof (ResolverAppDomainAgent).FullName,
                     true,
                     BindingFlags.Default,
                     null,
@@ -89,10 +88,12 @@ namespace HotAssembly
                     null);
 
                 var files = Directory.GetFiles(basePath, "*.*");
-                var assemblyPath =
-                    files.FirstOrDefault(p => instanceInNewDomain.DoesAssemblyContainClass(p, classFullName));
-
-                return !string.IsNullOrWhiteSpace(assemblyPath) ? Assembly.LoadFile(assemblyPath) : null;
+                return files.Where(
+                    p =>
+                        instanceInNewDomain.DoesAssemblyContainClassOrHotAssemblyAttributeOfRequestedType(p,
+                            manifests, interfaceToLookFor))
+                    .Select(assemblyPath => Assembly.LoadFile(assemblyPath))
+                    .ToArray();
             }
             finally
             {
@@ -100,18 +101,24 @@ namespace HotAssembly
                     AppDomain.Unload(newDomain);
             }
         }
-
     }
 
     internal class ResolverAppDomainAgent : MarshalByRefObject
     {
-        internal bool DoesAssemblyContainClass
-            (string filePath, string classFullName)
+        internal bool DoesAssemblyContainClassOrHotAssemblyAttributeOfRequestedType
+            (string filePath, PackageManifest[] manifests, Type inerfaceTypeToSearchFor)
         {
             try
             {
                 var assembly = Assembly.LoadFrom(filePath);
-                return assembly.ExportedTypes.Any(t => t.FullName == classFullName);
+                return
+                    assembly.ExportedTypes.Any(
+                        t =>
+                            // if the line below does not work, we can compare by the full name
+                            t.GetInterfaces().Any(i => i == inerfaceTypeToSearchFor) &&
+                            t.GetConstructors().Any() &&
+                            (manifests.Any(m => m.ClassFullName == t.FullName) ||
+                            t.GetCustomAttributes(typeof (HotAssemblyAttribute), true).Any()));
             }
             catch
             {

@@ -53,13 +53,17 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\SomeOtherProcess\SomeOtherProcess.csproj">
-      <Project>{4563b799-a1db-4caa-b4ab-6855de42f037}</Project>
-      <Name>SomeOtherProcess</Name>
+    <ProjectReference Include="..\..\source\HotAssembly.Core\HotAssembly.Core.csproj">
+      <Project>{d48260e2-f9ca-4625-a9c2-30c485a44e90}</Project>
+      <Name>HotAssembly.Core</Name>
     </ProjectReference>
     <ProjectReference Include="..\IComputer\IComputer.csproj">
       <Project>{777215A7-E11D-4971-8B9B-BD98CD594A33}</Project>
       <Name>IComputer</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SomeOtherProcess\SomeOtherProcess.csproj">
+      <Project>{4563b799-a1db-4caa-b4ab-6855de42f037}</Project>
+      <Name>SomeOtherProcess</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

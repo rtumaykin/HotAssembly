@@ -31,23 +31,23 @@ namespace HotAssembly
         /// Dictionary to store all of the cached instantiators. All of the possible variations of constructors will be in the Value part of this dictionary.
         /// Key is the packageId, and the second Dictionary is a concatenated Types for each constructor.
         /// </summary>
-        private static Dictionary<string, Dictionary<string, Instantiator<T>>> _instantiators;
-        protected static Dictionary<string, Dictionary<string, Instantiator<T>>> Instantiators
+        private static Dictionary<InstantiatorKey, Dictionary<string, Instantiator<T>>> _instantiators;
+        protected static Dictionary<InstantiatorKey, Dictionary<string, Instantiator<T>>> Instantiators
         {
             get
             {
                 LazyInitializer.EnsureInitialized(ref _instantiators,
-                    () => new Dictionary<string, Dictionary<string, Instantiator<T>>>());
+                    () => new Dictionary<InstantiatorKey, Dictionary<string, Instantiator<T>>>());
                 return _instantiators;
             }
         }
 
-        private static ConcurrentDictionary<string, object> _instantiatorLocks;
-        private static ConcurrentDictionary<string, object> InstantiatorLocks
+        private static ConcurrentDictionary<InstantiatorKey, object> _instantiatorLocks;
+        private static ConcurrentDictionary<InstantiatorKey, object> InstantiatorLocks
         {
             get
             {
-                LazyInitializer.EnsureInitialized(ref _instantiatorLocks, () => new ConcurrentDictionary<string, object>());
+                LazyInitializer.EnsureInitialized(ref _instantiatorLocks, () => new ConcurrentDictionary<InstantiatorKey, object>());
                 return _instantiatorLocks;
             }
         }
@@ -61,35 +61,21 @@ namespace HotAssembly
         /// Creates an instance of a requested class
         /// </summary>
         /// <typeparam name="T">type of the interface or a base class to instantiate</typeparam>
-        /// <param name="packageId">id of the assembly to instantiate.</param>
-        /// <param name="version"></param>
+        /// <param name="instantiatorKey">Full identifier of a class to instantiate including the package and version</param>
         /// <returns></returns>
-        public T Instantiate(string packageId, string version)
+        public T Instantiate(InstantiatorKey instantiatorKey)
         {
-            return Instantiate(packageId, version, null);
+            return Instantiate(instantiatorKey, null);
         }
-        public T Instantiate(string packageId, string version, object data)
+        public T Instantiate(InstantiatorKey instantiatorKey, object data)
         {
-            return Instantiate(packageId, version, new[] {data});
+            return Instantiate(instantiatorKey, new[] {data});
         }
-        public T Instantiate(string packageId, string version, params object [] data)
+        public T Instantiate(InstantiatorKey instantiatorKey, params object [] data)
         {
-            SemanticVersion semanticVersion = null;
-
             try
             {
-                semanticVersion = SemanticVersion.Parse(version);
-            }
-            catch (Exception e)
-            {
-                throw new InstantiatorException("Package Version is not a Semantic Version", e);
-            }
-
-            try
-            {
-                var versionedPackageId = $"{packageId}.{version}";
-
-                var instance = GetInstance(versionedPackageId, data);
+                var instance = GetInstance(instantiatorKey, data);
                 if (instance != null)
                 {
                     return instance;
@@ -99,28 +85,28 @@ namespace HotAssembly
                 var lockObject1 = new object();
                 lock (lockObject1)
                 {
-                    if (InstantiatorLocks.TryAdd(versionedPackageId, lockObject1))
+                    if (InstantiatorLocks.TryAdd(instantiatorKey, lockObject1))
                     {
                         // if we ended up here, it means that we were first
-                        Instantiators.Add(versionedPackageId, CreateInstantiatorsForPackage(packageId, semanticVersion));
+                        Instantiators.AddRange(CreateInstantiatorsForPackage(instantiatorKey));
                     }
                     else
                     {
                         // some other process have already created (or creating) instantiator
                         // Theoretically, it is quite possible to have previous process fail, so we will need to be careful about assuming that if we got here,
                         // then we should have instantiators.
-                        lock (InstantiatorLocks[versionedPackageId])
+                        lock (InstantiatorLocks[instantiatorKey])
                         {
                             // try read from the instantiators first. Maybe it has already been successfully created
-                            instance = GetInstance(versionedPackageId, data);
+                            instance = GetInstance(instantiatorKey, data);
                             if (instance != null)
                             {
                                 return instance;
                             }
-                            Instantiators.Add(versionedPackageId, CreateInstantiatorsForPackage(packageId, semanticVersion));
+                            Instantiators.AddRange(CreateInstantiatorsForPackage(instantiatorKey));
                         }
                     }
-                    instance = GetInstance(versionedPackageId, data);
+                    instance = GetInstance(instantiatorKey, data);
                     if (instance != null)
                     {
                         return instance;
@@ -132,16 +118,16 @@ namespace HotAssembly
                 throw new InstantiatorException("Error occurred during instantiation", e);
             }
 
-            throw new InstantiatorException($"Unknown error. Instantiator failed to produce an instance of {packageId}.{version}", null);
+            throw new InstantiatorException($"Unknown error. Instantiator failed to produce an instance of {instantiatorKey}", null);
         }
 
-        private static T GetInstance(string versionedPackageId, object[] data)
+        private static T GetInstance(InstantiatorKey instantiatorKey, object[] data)
         {
 
 
-            if (Instantiators.ContainsKey(versionedPackageId))
+            if (Instantiators.ContainsKey(instantiatorKey))
             {
-                var instantiatorByType = Instantiators[versionedPackageId];
+                var instantiatorByType = Instantiators[instantiatorKey];
 
                 // here it make sense to concatenate params
                 var paramsHash = data == null || !data.Any() ? "" : string.Join(", ", data.Select(d => d.GetType().FullName));
@@ -152,7 +138,7 @@ namespace HotAssembly
                 else
                 {
                     throw new InstantiatorException(
-                        $"Constructor signature {paramsHash} not found for package {versionedPackageId}", null);
+                        $"Constructor signature {paramsHash} not found for package {instantiatorKey}", null);
                 }
             }
             return default(T);
@@ -160,66 +146,82 @@ namespace HotAssembly
 
         private readonly string _rootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HotAssemblyPackages");
 
-
-        private Dictionary<string, Instantiator<T>> CreateInstantiatorsForPackage(string packageId, SemanticVersion semanticVersion)
+        /// <summary>
+        /// This method creates instantiators for all of the types in the package that can be instantiated
+        /// </summary>
+        /// <param name="instantiatorKey"></param>
+        /// <returns></returns>
+        private Dictionary<InstantiatorKey, Dictionary<string, Instantiator<T>>> CreateInstantiatorsForPackage(InstantiatorKey instantiatorKey)
         {
             string packagePath;
             Directory.CreateDirectory(_rootPath);
+            var returnDictionary = new Dictionary<InstantiatorKey, Dictionary<string, Instantiator<T>>>();
 
             try
             {
-                packagePath = _packageRetriever.Retrieve(_rootPath, packageId, semanticVersion);
+                packagePath = _packageRetriever.Retrieve(_rootPath, instantiatorKey.PackageId,
+                    SemanticVersion.Parse(instantiatorKey.Version));
             }
             catch (Exception e)
             {
-                throw new InstantiatorCreationException($"Package Retriever Failed to obtain the package {packageId}.{semanticVersion.ToNormalizedString()}", e, true);
+                throw new InstantiatorCreationException(
+                    $"Package Retriever Failed to obtain the package {instantiatorKey.PackageId}.{instantiatorKey.Version}",
+                    e, true);
             }
 
             if (string.IsNullOrWhiteSpace(packagePath))
-                throw new InstantiatorCreationException($"Package Retriever Failed to obtain the package {packageId}.{semanticVersion.ToNormalizedString()} from available sources", null, true);
+                throw new InstantiatorCreationException(
+                    $"Package Retriever Failed to obtain the package {instantiatorKey.PackageId}.{instantiatorKey.Version} from available sources",
+                    null, true);
 
             // find the directory where the dlls are
             var libPath = Directory.GetDirectories(Path.Combine(packagePath, "lib")).FirstOrDefault() ??
                           Path.Combine(packagePath, "lib");
 
-            PackageManifest manifest = null;
+            PackageManifest[] manifests = null;
 
             if (!File.Exists(Path.Combine(packagePath, "HotAssembly.json")))
-                throw new InstantiatorCreationException($"HotAssembly.json file was not found in the package {packageId}.{semanticVersion.ToNormalizedString()}", null, true);
+                throw new InstantiatorCreationException(
+                    $"HotAssembly.json file was not found in the package {instantiatorKey.PackageId}.{instantiatorKey.Version}",
+                    null, true);
             try
             {
-                manifest =
-                    JsonConvert.DeserializeObject<PackageManifest>(
+                manifests =
+                    JsonConvert.DeserializeObject<PackageManifest[]>(
                         File.ReadAllText(Path.Combine(packagePath, "HotAssembly.json")));
             }
             catch (Exception e)
             {
-                throw new InstantiatorCreationException($"Failed to read from HotAssembly.json for package {packageId}.{semanticVersion.ToNormalizedString()}", e, true);
+                throw new InstantiatorCreationException(
+                    $"Failed to read from HotAssembly.json for package {instantiatorKey.PackageId}.{instantiatorKey.Version}",
+                    e, true);
             }
 
-            var hotAssembly = AssemblyResolver.ResolveByClassName(libPath, manifest.ClassFullName);
+            var hotAssemblies = AssemblyResolver.DiscoverHotAssemblies(libPath, manifests, typeof (T));
+            if (hotAssemblies != null && hotAssemblies.Any())
+                AssemblyResolver.AddPackageBasePath(libPath);
 
-            if (hotAssembly == null)
-                throw new InstantiatorCreationException($"Unable to find class {manifest.ClassFullName} specified in HotAssembly.json in the package folder", null, true);
+            if (hotAssemblies == null)
+                return returnDictionary;
 
-            var hotClass = hotAssembly.GetType(manifest.ClassFullName);
+            foreach (var hotType in hotAssemblies.SelectMany(hotAssembly => hotAssembly.ExportedTypes.Where(
+                t =>
+                    t.GetInterfaces().Any(i => i == typeof(T)) &&
+                    t.GetConstructors().Any() &&
+                    (manifests.Any(m => m.ClassFullName == t.FullName) ||
+                     t.GetCustomAttributes(typeof (HotAssemblyAttribute), true).Any()))))
+            {
+                returnDictionary.Add(
+                    new InstantiatorKey(instantiatorKey.PackageId, instantiatorKey.Version, hotType.FullName), 
+                    hotType.GetConstructors().ToDictionary(
+                    ctor =>
+                        !ctor.GetParameters().Any()
+                            ? ""
+                            : string.Join(", ", ctor.GetParameters().Select(p => p.ParameterType.FullName)),
+                    GetInstantiator));
+            }
 
-            if (hotClass.GetInterfaces().All(i => i != typeof (T)))
-                throw new InstantiatorCreationException($"Class {manifest.ClassFullName} specified in HotAssembly.json does not implement interface {typeof(T).FullName}", null, true);
-
-            var ctors = hotClass.GetConstructors();
-
-            if (ctors == null || !ctors.Any())
-                throw new InstantiatorCreationException(
-                    $"No public constructors for type {manifest.ClassFullName} were found", null, true);
-
-            // add the base path to allowed paths
-            AssemblyResolver.AddPackageBasePath(libPath);
-
-            return
-                ctors.ToDictionary(
-                ctor => !ctor.GetParameters().Any() ? "" : string.Join(", ", ctor.GetParameters().Select(p => p.ParameterType.FullName)),
-                    GetInstantiator);
+            return returnDictionary;
         }
 
         public static Instantiator<T> GetInstantiator(ConstructorInfo ctor)
