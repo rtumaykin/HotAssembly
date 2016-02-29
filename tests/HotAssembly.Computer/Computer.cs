@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using Newtonsoft.Json;
 
 namespace HotAssembly.Computer
@@ -13,7 +12,6 @@ namespace HotAssembly.Computer
         }
     }
 
-    [HotAssembly]
     public class Computer1 : IComputer
     {
         public string GetAppDomain()

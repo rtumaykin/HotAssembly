@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Threading;
 using HotAssembly.Package;
-using Newtonsoft.Json;
 using NuGet;
 
 namespace HotAssembly
@@ -178,26 +174,7 @@ namespace HotAssembly
             var libPath = Directory.GetDirectories(Path.Combine(packagePath, "lib")).FirstOrDefault() ??
                           Path.Combine(packagePath, "lib");
 
-            PackageManifest[] manifests = null;
-
-            if (!File.Exists(Path.Combine(packagePath, "HotAssembly.json")))
-                throw new InstantiatorCreationException(
-                    $"HotAssembly.json file was not found in the package {instantiatorKey.PackageId}.{instantiatorKey.Version}",
-                    null, true);
-            try
-            {
-                manifests =
-                    JsonConvert.DeserializeObject<PackageManifest[]>(
-                        File.ReadAllText(Path.Combine(packagePath, "HotAssembly.json")));
-            }
-            catch (Exception e)
-            {
-                throw new InstantiatorCreationException(
-                    $"Failed to read from HotAssembly.json for package {instantiatorKey.PackageId}.{instantiatorKey.Version}",
-                    e, true);
-            }
-
-            var hotAssemblies = AssemblyResolver.DiscoverHotAssemblies(libPath, manifests, typeof (T));
+            var hotAssemblies = AssemblyResolver.DiscoverHotAssemblies(libPath, typeof (T));
             if (hotAssemblies != null && hotAssemblies.Any())
                 AssemblyResolver.AddPackageBasePath(libPath);
 
@@ -207,9 +184,7 @@ namespace HotAssembly
             foreach (var hotType in hotAssemblies.SelectMany(hotAssembly => hotAssembly.ExportedTypes.Where(
                 t =>
                     t.GetInterfaces().Any(i => i == typeof(T)) &&
-                    t.GetConstructors().Any() &&
-                    (manifests.Any(m => m.ClassFullName == t.FullName) ||
-                     t.GetCustomAttributes(typeof (HotAssemblyAttribute), true).Any()))))
+                    t.GetConstructors().Any())))
             {
                 returnDictionary.Add(
                     new InstantiatorKey(instantiatorKey.PackageId, instantiatorKey.Version, hotType.FullName), 

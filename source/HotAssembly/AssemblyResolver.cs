@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using HotAssembly.Package;
 
 namespace HotAssembly
 {
@@ -66,7 +62,7 @@ namespace HotAssembly
             }
         }
 
-        public static Assembly[] DiscoverHotAssemblies(string basePath, PackageManifest[] manifests, Type interfaceToLookFor)
+        public static Assembly[] DiscoverHotAssemblies(string basePath, Type interfaceToLookFor)
         {
             AppDomain newDomain = null;
             try
@@ -91,7 +87,7 @@ namespace HotAssembly
                 return files.Where(
                     p =>
                         instanceInNewDomain.DoesAssemblyContainClassOrHotAssemblyAttributeOfRequestedType(p,
-                            manifests, interfaceToLookFor))
+                            interfaceToLookFor))
                     .Select(assemblyPath => Assembly.LoadFile(assemblyPath))
                     .ToArray();
             }
@@ -106,7 +102,7 @@ namespace HotAssembly
     internal class ResolverAppDomainAgent : MarshalByRefObject
     {
         internal bool DoesAssemblyContainClassOrHotAssemblyAttributeOfRequestedType
-            (string filePath, PackageManifest[] manifests, Type inerfaceTypeToSearchFor)
+            (string filePath, Type inerfaceTypeToSearchFor)
         {
             try
             {
@@ -114,11 +110,9 @@ namespace HotAssembly
                 return
                     assembly.ExportedTypes.Any(
                         t =>
-                            // if the line below does not work, we can compare by the full name
+                            // if the line below does not work due to type issues betweeen contexts, we can compare by the full name
                             t.GetInterfaces().Any(i => i == inerfaceTypeToSearchFor) &&
-                            t.GetConstructors().Any() &&
-                            (manifests.Any(m => m.ClassFullName == t.FullName) ||
-                            t.GetCustomAttributes(typeof (HotAssemblyAttribute), true).Any()));
+                            t.GetConstructors().Any());
             }
             catch
             {

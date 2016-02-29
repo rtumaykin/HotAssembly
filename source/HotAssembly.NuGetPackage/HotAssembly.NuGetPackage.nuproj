@@ -36,7 +36,6 @@
     <Content Include="Readme.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\HotAssembly.Core.NugetPackage\HotAssembly.Core.NugetPackage.nuproj" />
     <ProjectReference Include="..\HotAssembly\HotAssembly.csproj" />
   </ItemGroup>
   <Import Project="$(NuProjPath)\NuProj.targets" />

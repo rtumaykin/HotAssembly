@@ -73,10 +73,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\HotAssembly.Core\HotAssembly.Core.csproj">
-      <Project>{d48260e2-f9ca-4625-a9c2-30c485a44e90}</Project>
-      <Name>HotAssembly.Core</Name>
-    </ProjectReference>
     <ProjectReference Include="..\HotAssembly.Package\HotAssembly.Package.csproj">
       <Project>{a4abe676-d899-4d49-b0be-58d5c6238ac9}</Project>
       <Name>HotAssembly.Package</Name>

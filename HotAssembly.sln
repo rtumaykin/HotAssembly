@@ -34,10 +34,6 @@ Project("{FF286327-C783-4F7A-AB73-9BCBAD0D4460}") = "HotAssembly.Computer.NugetP
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SomeOtherProcess", "tests\SomeOtherProcess\SomeOtherProcess.csproj", "{4563B799-A1DB-4CAA-B4AB-6855DE42F037}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HotAssembly.Core", "source\HotAssembly.Core\HotAssembly.Core.csproj", "{D48260E2-F9CA-4625-A9C2-30C485A44E90}"
-EndProject
-Project("{FF286327-C783-4F7A-AB73-9BCBAD0D4460}") = "HotAssembly.Core.NugetPackage", "source\HotAssembly.Core.NugetPackage\HotAssembly.Core.NugetPackage.nuproj", "{BFA6E557-9A99-43FB-BB5C-1BFAE8BFD370}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -84,14 +80,6 @@ Global
 		{4563B799-A1DB-4CAA-B4AB-6855DE42F037}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4563B799-A1DB-4CAA-B4AB-6855DE42F037}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4563B799-A1DB-4CAA-B4AB-6855DE42F037}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D48260E2-F9CA-4625-A9C2-30C485A44E90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D48260E2-F9CA-4625-A9C2-30C485A44E90}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D48260E2-F9CA-4625-A9C2-30C485A44E90}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D48260E2-F9CA-4625-A9C2-30C485A44E90}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BFA6E557-9A99-43FB-BB5C-1BFAE8BFD370}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BFA6E557-9A99-43FB-BB5C-1BFAE8BFD370}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BFA6E557-9A99-43FB-BB5C-1BFAE8BFD370}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BFA6E557-9A99-43FB-BB5C-1BFAE8BFD370}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -107,7 +95,5 @@ Global
 		{4AA4BF0B-E800-43E8-85E7-EA0FD788995B} = {B905B70A-CA2E-4604-B650-CBFF52D23CF4}
 		{F5B89734-28AE-43F6-8565-300AA794C546} = {B905B70A-CA2E-4604-B650-CBFF52D23CF4}
 		{4563B799-A1DB-4CAA-B4AB-6855DE42F037} = {B905B70A-CA2E-4604-B650-CBFF52D23CF4}
-		{D48260E2-F9CA-4625-A9C2-30C485A44E90} = {C166F64C-82BF-4A45-BC6A-F2638CE7B000}
-		{BFA6E557-9A99-43FB-BB5C-1BFAE8BFD370} = {C166F64C-82BF-4A45-BC6A-F2638CE7B000}
 	EndGlobalSection
 EndGlobal

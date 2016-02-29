@@ -38,8 +38,5 @@
   <ItemGroup>
     <ProjectReference Include="..\HotAssembly.Computer\HotAssembly.Computer.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Content Include="HotAssembly.json" />
-  </ItemGroup>
   <Import Project="$(NuProjPath)\NuProj.targets" />
 </Project>
