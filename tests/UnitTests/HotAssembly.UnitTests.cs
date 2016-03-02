@@ -94,6 +94,7 @@ namespace HotAssembly.UnitTests
                     "HotAssembly.Computer.Computer1"));
             var x1 = z1.GetAppDomain();
         }
+        [Ignore("No longer checking for the Interface")]
         [Test]
         public void Should_Fail_Not_Interface()
         {

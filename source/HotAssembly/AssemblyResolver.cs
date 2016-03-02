@@ -86,7 +86,7 @@ namespace HotAssembly
                 var files = Directory.GetFiles(basePath, "*.*");
                 return files.Where(
                     p =>
-                        instanceInNewDomain.DoesAssemblyContainTypesImplementingRequestedInterface(p,
+                        instanceInNewDomain.DoesAssemblyContainInheritedTypes(p,
                             interfaceToLookFor))
                     .Select(assemblyPath => Assembly.LoadFile(assemblyPath))
                     .ToArray();
@@ -101,8 +101,8 @@ namespace HotAssembly
 
     internal class ResolverAppDomainAgent : MarshalByRefObject
     {
-        internal bool DoesAssemblyContainTypesImplementingRequestedInterface
-            (string filePath, Type inerfaceTypeToSearchFor)
+        internal bool DoesAssemblyContainInheritedTypes
+            (string filePath, Type baseType)
         {
             try
             {
@@ -110,8 +110,8 @@ namespace HotAssembly
                 return
                     assembly.ExportedTypes.Any(
                         t =>
-                            // if the line below does not work due to type issues betweeen contexts, we can compare by the full name
-                            t.GetInterfaces().Any(i => i == inerfaceTypeToSearchFor) &&
+                            t.IsClass &&
+                            baseType.IsAssignableFrom(t) &&
                             t.GetConstructors().Any());
             }
             catch

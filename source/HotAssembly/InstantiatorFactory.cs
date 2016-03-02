@@ -50,9 +50,6 @@ namespace HotAssembly
 
         public InstantiatorFactory(IPackageRetriever packageRetriever)
         {
-            if (!typeof(T).IsInterface)
-                throw new InstantiatorCreationException($"Only interface instantiation is supported. Type {typeof(T).FullName} is not an interface", null, true);
-
             _packageRetriever = packageRetriever;
         }
 
@@ -181,7 +178,8 @@ namespace HotAssembly
 
             foreach (var hotType in hotAssemblies.SelectMany(hotAssembly => hotAssembly.ExportedTypes.Where(
                 t =>
-                    t.GetInterfaces().Any(i => i == typeof(T)) &&
+                    t.IsClass &&
+                    typeof(T).IsAssignableFrom(t) &&
                     t.GetConstructors().Any())))
             {
                 returnDictionary.Add(
