@@ -197,7 +197,6 @@ namespace HotAssembly
 
         public static Instantiator<T> GetInstantiator(ConstructorInfo ctor)
         {
-            var type = ctor.DeclaringType;
             var paramsInfo = ctor.GetParameters();
 
             //create a single param of type object[]
