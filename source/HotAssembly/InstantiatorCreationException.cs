@@ -2,6 +2,7 @@
 
 namespace HotAssembly
 {
+    [Serializable]
     public class InstantiatorCreationException : Exception
     {
         public bool IsFatal { get; private set; }

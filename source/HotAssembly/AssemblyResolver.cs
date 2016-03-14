@@ -23,7 +23,7 @@ namespace HotAssembly
             if (string.IsNullOrWhiteSpace(basePath))
                 return null;
 
-            var dummyOutValue = false;
+            bool dummyOutValue;
 
             // only resolve the paths that have been added by HotAssembly
             if (!InstalledPackagesBasePaths.TryGetValue(basePath, out dummyOutValue))
@@ -88,7 +88,7 @@ namespace HotAssembly
                     p =>
                         instanceInNewDomain.DoesAssemblyContainInheritedTypes(p,
                             interfaceToLookFor))
-                    .Select(assemblyPath => Assembly.LoadFile(assemblyPath))
+                    .Select(Assembly.LoadFile)
                     .ToArray();
             }
             finally

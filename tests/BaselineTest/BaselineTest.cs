@@ -3,7 +3,7 @@ using HotAssembly;
 using HotAssembly.Computer;
 using NUnit.Framework;
 
-namespace BenchmarkTest
+namespace BaselineTest
 {
     [TestFixture]
     public class BaselineTest

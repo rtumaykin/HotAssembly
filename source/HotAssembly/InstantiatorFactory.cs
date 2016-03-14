@@ -11,7 +11,7 @@ using NuGet;
 
 namespace HotAssembly
 {
-    public delegate T Instantiator<T>(params object[] args);
+    public delegate T Instantiator<out T>(params object[] args);
 
     public class InstantiatorFactory<T> where T:class
     {

@@ -9,7 +9,7 @@ namespace HotAssembly.UnitTests
         [Test]
         public void SerializetoJson()
         {
-            var z = new manif[]
+            var z = new[]
             {
                 new manif {FullClassName = "abc"},
                 new manif {FullClassName = "xyz"}

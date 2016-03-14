@@ -8,7 +8,7 @@ using NUnit.Framework;
 namespace HotAssembly.Package.Tests
 {
     [TestFixture]
-    public class Class1
+    public class UnitTests
     {
         [Test]
         public void PackageGet()
@@ -23,7 +23,7 @@ namespace HotAssembly.Package.Tests
             Assert.Pass($"Execution took {(DateTime.Now - start).TotalMilliseconds} milliseconds.");
         }
 
-        private ConcurrentBag<string> res = new ConcurrentBag<string>();
+        private readonly ConcurrentBag<string> res = new ConcurrentBag<string>();
 
         private void CheckRetriever()
         {

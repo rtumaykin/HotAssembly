@@ -14,8 +14,7 @@ namespace HotAssembly
         {
             var typedObj = obj as InstantiatorKey;
 
-            return typedObj != null && (typedObj.PackageId == PackageId && typedObj.Version == Version &&
-                                        typedObj.FullTypeName == FullTypeName);
+            return typedObj != null && typedObj.PackageId == PackageId && typedObj.Version == Version && typedObj.FullTypeName == FullTypeName;
         }
 
         public override string ToString()

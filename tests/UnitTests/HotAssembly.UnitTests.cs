@@ -15,7 +15,7 @@ namespace HotAssembly.UnitTests
         public void Should_Successfully_Instantiate()
         {
             var fp = new NugetPackageRetriever(new [] {@"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug"});
-            var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
+            var ha = new InstantiatorFactory<IComputer>(fp);
             {
                 // let it jit compile
                 var z = ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0", "HotAssembly.Computer.Computer"));
@@ -37,7 +37,7 @@ namespace HotAssembly.UnitTests
         public void Should_Successfully_Instantiate_Multithreaded()
         {
             var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
-            var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
+            var ha = new InstantiatorFactory<IComputer>(fp);
             var tasks = new List<Task>();
 
             var start = DateTime.Now;
@@ -64,7 +64,7 @@ namespace HotAssembly.UnitTests
             try
             {
                 var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
-                var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
+                var ha = new InstantiatorFactory<IComputer>(fp);
                 var z = ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0", "HotAssembly.Computer.Computer"), 100);
                 var x = z.GetAppDomain();
             }
@@ -84,7 +84,7 @@ namespace HotAssembly.UnitTests
             var fp =
                 new NugetPackageRetriever(new[]
                 {@"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug"});
-            var ha = new HotAssembly.InstantiatorFactory<IComputer>(fp);
+            var ha = new InstantiatorFactory<IComputer>(fp);
             var z =
                 ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0",
                     "HotAssembly.Computer.Computer"));
@@ -102,7 +102,7 @@ namespace HotAssembly.UnitTests
             try
             {
                 var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
-                var ha = new HotAssembly.InstantiatorFactory<UnitTests>(fp);
+                var ha = new InstantiatorFactory<UnitTests>(fp);
             }
             catch (InstantiatorCreationException ex)
             {
