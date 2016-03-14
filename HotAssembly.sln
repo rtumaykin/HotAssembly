@@ -29,6 +29,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HotAssembly.Package", "source\HotAssembly.Package\HotAssembly.Package.csproj", "{A4ABE676-D899-4D49-B0BE-58D5C6238AC9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HotAssembly.Package.Tests", "tests\HotAssembly.Package.Tests\HotAssembly.Package.Tests.csproj", "{4AA4BF0B-E800-43E8-85E7-EA0FD788995B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F5B89734-28AE-43F6-8565-300AA794C546} = {F5B89734-28AE-43F6-8565-300AA794C546}
+	EndProjectSection
 EndProject
 Project("{FF286327-C783-4F7A-AB73-9BCBAD0D4460}") = "HotAssembly.Computer.NugetPackage", "tests\HotAssembly.Computer.NugetPackage\HotAssembly.Computer.NugetPackage.nuproj", "{F5B89734-28AE-43F6-8565-300AA794C546}"
 EndProject

@@ -1,4 +1,19 @@
-﻿using System;
+﻿//-----------------------------------------------------------------------
+//Copyright 2015-2016 Roman Tumaykin
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+//-----------------------------------------------------------------------
+using System;
 using System.IO;
 using System.Threading;
 using NuGet;
@@ -6,7 +21,7 @@ using NuGet;
 namespace HotAssembly.Package
 {
     /// <summary>
-    /// NugetPackageRetriever retrieves and stores locally a requested nuget package from a nuget repository
+    /// NugetPackageRetriever retrieves and stores locally a requested nuget package from a NuGet native repository
     /// </summary>
     [Serializable]
     public class NugetPackageRetriever : IPackageRetriever
@@ -14,7 +29,7 @@ namespace HotAssembly.Package
         private readonly string[] _repositories;
 
         /// <summary>
-        /// This constructor reads HotAssembly/NuGetRepos section from the application 
+        /// Reads HotAssembly/NuGetRepos section from the application 
         /// configuration file to initialize the repositories. If the section does not 
         /// exist or not configured, it initialized with default NuGet Url
         /// "https://packages.nuget.org/api/v2"
@@ -24,7 +39,7 @@ namespace HotAssembly.Package
             _repositories = new[] {"https://packages.nuget.org/api/v2"};
         }
         /// <summary>
-        /// This constructor initializes the class using a collection of Uri paths to the repositories
+        /// Initializes the class using a collection of paths to the NuGet repositories
         /// </summary>
         /// <param name="repositories"></param>
         public NugetPackageRetriever(string[] repositories)
@@ -32,17 +47,24 @@ namespace HotAssembly.Package
             _repositories = repositories;
         }
 
-        public string Retrieve(string rootPath, string packageId, SemanticVersion version)
+        /// <summary>
+        /// Retrieves package from a NuGet native repository, using PackageId and Version and unpacks it into a subfolder of the Destination Path.
+        /// </summary>
+        /// <param name="destinationBasePath">Path to the root HotAssembly Package directory</param>
+        /// <param name="packageId">Package Id</param>
+        /// <param name="version">Package Version</param>
+        /// <returns>Path to the package directory, or null if the package was not found</returns>
+        public string Retrieve(string destinationBasePath, string packageId, SemanticVersion version)
         {
-            Directory.CreateDirectory(rootPath);
-            foreach (var repositoryUri in _repositories)
+            Directory.CreateDirectory(destinationBasePath);
+            foreach (var repositoryPath in _repositories)
             {
-                var repo = PackageRepositoryFactory.Default.CreateRepository(repositoryUri);
+                var repo = PackageRepositoryFactory.Default.CreateRepository(repositoryPath);
                 var package = version == null ? repo.FindPackage(packageId) : repo.FindPackage(packageId, version);
 
                 if (package != null)
                 {
-                    var packageDestinationFolder = Path.Combine(rootPath, $"{package.Id}.{package.Version}");
+                    var packageDestinationFolder = Path.Combine(destinationBasePath, $"{package.Id}.{package.Version}");
 
                     var now = DateTime.Now;
                     // ultimately either this or another process will end up creating this directory
@@ -62,7 +84,7 @@ namespace HotAssembly.Package
                                     try
                                     {
                                         // by now other process might have created this folder and unpacked the package
-                                        package.ExtractContents(new PhysicalFileSystem(rootPath),
+                                        package.ExtractContents(new PhysicalFileSystem(destinationBasePath),
                                             packageDestinationFolder);
 
                                         return packageDestinationFolder;
@@ -94,9 +116,15 @@ namespace HotAssembly.Package
             return null;
         }
 
-        public string Retrieve(string rootPath, string packageId)
+        /// <summary>
+        /// Retrieves the latest package version from a NuGet native repository, using PackageId and unpacks it into a subfolder of the Destination Path.
+        /// </summary>
+        /// <param name="destinationBasePath">Path to the root HotAssembly Package directory</param>
+        /// <param name="packageId">Package Id</param>
+        /// <returns>Path to the package directory, or null if the package was not found</returns>
+        public string Retrieve(string destinationBasePath, string packageId)
         {
-            return Retrieve(rootPath, packageId, null);
+            return Retrieve(destinationBasePath, packageId, null);
         }
     }
 }
