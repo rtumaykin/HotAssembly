@@ -17,7 +17,7 @@ using System;
 
 namespace SomeOtherProcess
 {
-    public class SomeThing 
+    public class Proc1 
     {
         public static string GetStuff()
         {

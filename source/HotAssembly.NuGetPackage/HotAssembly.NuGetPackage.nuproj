@@ -33,9 +33,6 @@
     <EmbedSourceFiles>true</EmbedSourceFiles>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="Readme.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\HotAssembly\HotAssembly.csproj" />
   </ItemGroup>
   <Import Project="$(NuProjPath)\NuProj.targets" />

@@ -1,1 +1,0 @@
-﻿This NuGet package contains the library that takes care of hot loading of the dlls into the application at run time. 

@@ -13,6 +13,9 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 //-----------------------------------------------------------------------
+
+using System;
+using System.Text.RegularExpressions;
 using NuGet;
 
 namespace HotAssembly
@@ -44,8 +47,21 @@ namespace HotAssembly
 
         public InstantiatorKey(string packageId, string version, string fullTypeName)
         {
+            if (!Regex.IsMatch(packageId, @"^(@?[a-z_A-Z]\w+(?:\.@?[a-z_A-Z]\w+)*)$"))
+                throw new InstantiatorException($"\"{packageId}\" is not a valid Package Name", null);
+
+            if (!Regex.IsMatch(fullTypeName, @"^(@?[a-z_A-Z]\w+(?:\.@?[a-z_A-Z]\w+)*)$"))
+                throw new InstantiatorException($"\"{fullTypeName}\" is not a valid C# Type Full Name", null);
+            try
+            {
+                Version = SemanticVersion.Parse(version).ToNormalizedString();
+            }
+            catch (Exception e)
+            {
+                throw new InstantiatorException($"\"{version}\" is not a valid version", e);
+            }
+
             PackageId = packageId;
-            Version = SemanticVersion.Parse(version).ToNormalizedString(); 
             FullTypeName = fullTypeName;
         }
     }

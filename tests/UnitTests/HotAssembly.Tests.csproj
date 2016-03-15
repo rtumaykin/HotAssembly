@@ -65,7 +65,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="HotAssembly.UnitTests.cs" />
+    <Compile Include="InstantiatorTests.cs" />
+    <Compile Include="InstantiatorKeyTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

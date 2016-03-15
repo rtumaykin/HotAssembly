@@ -24,13 +24,13 @@ using Xunit.Abstractions;
 
 namespace HotAssembly.Tests
 {
-    public class UnitTests
+    public class InstantiatorTests : IDisposable
     {
         private readonly ITestOutputHelper _output;
         private readonly string _basePath;
         private const string _nugetPackageLocation = @"..\..\..\TestObjects\HotAssembly.Computer.NugetPackage\bin";
 
-        public UnitTests(ITestOutputHelper output)
+        public InstantiatorTests(ITestOutputHelper output)
         {
             _output = output;
 
@@ -125,6 +125,11 @@ namespace HotAssembly.Tests
                 ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0",
                     "HotAssembly.Computer.Computer1"));
             var x1 = z1.GetAppDomain();
+        }
+
+        public void Dispose()
+        {
+            Directory.Delete(_basePath, true);
         }
     }
 }
