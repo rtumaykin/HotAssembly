@@ -29,6 +29,7 @@ namespace HotAssembly.Package.Tests
     {
         private readonly ITestOutputHelper _output;
         private readonly string _basePath;
+        private const string _nugetPackageLocation = @"..\..\..\TestObjects\HotAssembly.Computer.NugetPackage\bin";
 
         public PackageUnitTests(ITestOutputHelper output)
         {
@@ -67,7 +68,7 @@ namespace HotAssembly.Package.Tests
                 _res.Add(new NugetPackageRetriever(new[]
                 {
                     Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                        @"..\..\..\HotAssembly.Computer.NugetPackage\bin", configName)
+                        _nugetPackageLocation, configName)
                 }).Retrieve(
                     _basePath,
                     packageName));
@@ -77,7 +78,7 @@ namespace HotAssembly.Package.Tests
                 _res.Add(new NugetPackageRetriever(new[]
                 {
                     Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                        @"..\..\..\HotAssembly.Computer.NugetPackage\bin", configName)
+                        _nugetPackageLocation, configName)
                 }).Retrieve(
                     _basePath,
                     packageName,
@@ -85,31 +86,70 @@ namespace HotAssembly.Package.Tests
             }
         }
 
-        [Fact]
-        public void Success_GetOne()
+        [Theory]
+        [InlineData("HotAssembly.Computer.NugetPackage", "1.0.0")]
+        [InlineData("HotAssembly.Computer.NugetPackage", null)]
+        public void Success_GetOne(string packageName, string packageVersion)
         {
-            var pak =
-                new NugetPackageRetriever(new[]
+            string pak;
+            var configName = AppDomain.CurrentDomain.BaseDirectory.Split('\\').Last();
+
+            if (string.IsNullOrEmpty(packageVersion))
+            {
+                pak = new NugetPackageRetriever(new[]
                 {
                     Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                        @"..\..\..\HotAssembly.Computer.NugetPackage\bin\Debug")
+                        _nugetPackageLocation, configName)
                 }).Retrieve(
                     _basePath,
-                    "HotAssembly.Computer.NugetPackage");
-            Assert.NotNull(pak);
+                    packageName);
+            }
+            else
+            {
+                pak = new NugetPackageRetriever(new[]
+                {
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                        _nugetPackageLocation, configName)
+                }).Retrieve(
+                    _basePath,
+                    packageName,
+                    new SemanticVersion(packageVersion));
+            }
+
+            Assert.True(!string.IsNullOrEmpty(pak) && pak == Path.Combine(_basePath, "HotAssembly.Computer.NugetPackage.1.0.0"));
         }
 
-        [Fact]
-        public void Fail_InvalidPackage()
+        [Theory]
+        [InlineData("HotAssembly.Computer.NugetPackage", "2.0.0")]
+        [InlineData("HotAssembly.Computer.NugetPackagexx", null)]
+        public void Fail_GetOne_InvalidPackage(string packageName, string packageVersion)
         {
-            Assert.Null(
-                new NugetPackageRetriever(new[]
+            string pak;
+            var configName = AppDomain.CurrentDomain.BaseDirectory.Split('\\').Last();
+
+            if (string.IsNullOrEmpty(packageVersion))
+            {
+                pak = new NugetPackageRetriever(new[]
                 {
                     Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                        @"..\..\..\HotAssembly.Computer.NugetPackage\bin\Debug")
+                        _nugetPackageLocation, configName)
                 }).Retrieve(
                     _basePath,
-                    "HotAssembly.Computer.NugetPackagezzx"));
+                    packageName);
+            }
+            else
+            {
+                pak = new NugetPackageRetriever(new[]
+                {
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                        _nugetPackageLocation, configName)
+                }).Retrieve(
+                    _basePath,
+                    packageName,
+                    new SemanticVersion(packageVersion));
+            }
+
+            Assert.True(string.IsNullOrEmpty(pak) || pak != Path.Combine(_basePath, "HotAssembly.Computer.NugetPackage.1.0.0"));
         }
 
         public void Dispose()

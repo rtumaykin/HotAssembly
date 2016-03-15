@@ -1,14 +1,39 @@
-﻿using System;
+﻿//-----------------------------------------------------------------------
+//Copyright 2015-2016 Roman Tumaykin
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+//-----------------------------------------------------------------------
+using System;
 using HotAssembly;
 using HotAssembly.Computer;
-using NUnit.Framework;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace BaselineTest
 {
-    [TestFixture]
     public class BaselineTest
     {
-        [Test]
+        private readonly ITestOutputHelper _output;
+
+        public BaselineTest(ITestOutputHelper output)
+        {
+            _output = output;
+        }
+
+        /// <summary>
+        /// Helps to measure performance of a regular class instantiation
+        /// </summary>
+        [Fact]
         public void LocalInvocation()
         {
             var start = DateTime.Now;
@@ -18,7 +43,7 @@ namespace BaselineTest
                 var x = z.GetAppDomain();
             }
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
-            Assert.Pass("elapsed {0} ms", elapsed);
+            _output.WriteLine($"elapsed {elapsed} ms");
         }
     }
 }

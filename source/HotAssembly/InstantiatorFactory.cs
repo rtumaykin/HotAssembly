@@ -1,4 +1,19 @@
-﻿using System;
+﻿//-----------------------------------------------------------------------
+//Copyright 2015-2016 Roman Tumaykin
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+//-----------------------------------------------------------------------
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -13,7 +28,7 @@ namespace HotAssembly
 {
     public delegate T Instantiator<out T>(params object[] args);
 
-    public class InstantiatorFactory<T> where T:class
+    public sealed class InstantiatorFactory<T> where T:class
     {
         private readonly IPackageRetriever _packageRetriever;
 
@@ -28,7 +43,8 @@ namespace HotAssembly
         /// Key is the packageId, and the second Dictionary is a concatenated Types for each constructor.
         /// </summary>
         private static Dictionary<InstantiatorKey, Dictionary<string, Instantiator<T>>> _instantiators;
-        protected static Dictionary<InstantiatorKey, Dictionary<string, Instantiator<T>>> Instantiators
+
+        private static Dictionary<InstantiatorKey, Dictionary<string, Instantiator<T>>> Instantiators
         {
             get
             {
@@ -54,24 +70,43 @@ namespace HotAssembly
         }
 
         /// <summary>
-        /// Creates an instance of a requested type
+        /// Creates and returns an instance of a class or interface T with no arguments.
         /// </summary>
         /// <typeparam name="T">type of the interface to instantiate</typeparam>
-        /// <param name="instantiatorKey">Full identifier of a type to instantiate including the package and version</param>
+        /// <param name="instantiatorKey"></param>
         /// <returns></returns>
+        /// <exception cref="InstantiatorException"></exception>
         public T Instantiate(InstantiatorKey instantiatorKey)
         {
             return Instantiate(instantiatorKey, null);
         }
+
+        /// <summary>
+        /// Creates and returns an instance of a class or interface T with a single constructor argument (<paramref name="data"/>).
+        /// </summary>
+        /// <typeparam name="T">type of the interface to instantiate</typeparam>
+        /// <param name="instantiatorKey"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        /// <exception cref="InstantiatorException"></exception>
         public T Instantiate(InstantiatorKey instantiatorKey, object data)
         {
             return Instantiate(instantiatorKey, new[] {data});
         }
+
+        /// <summary>
+        /// Creates and returns an instance of a class or interface T with given constructor arguments (<paramref name="data"/>).
+        /// </summary>
+        /// <typeparam name="T">type of the interface to instantiate</typeparam>
+        /// <param name="instantiatorKey"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        /// <exception cref="InstantiatorException"></exception>
         public T Instantiate(InstantiatorKey instantiatorKey, params object [] data)
         {
             try
             {
-                var instance = GetInstance(instantiatorKey, data);
+                var instance = CreateInstance(instantiatorKey, data);
                 if (instance != null)
                 {
                     return instance;
@@ -94,7 +129,7 @@ namespace HotAssembly
                         lock (InstantiatorLocks[instantiatorKey])
                         {
                             // try read from the instantiators first. Maybe it has already been successfully created
-                            instance = GetInstance(instantiatorKey, data);
+                            instance = CreateInstance(instantiatorKey, data);
                             if (instance != null)
                             {
                                 return instance;
@@ -102,7 +137,7 @@ namespace HotAssembly
                             Instantiators.AddRange(CreateInstantiatorsForPackage(instantiatorKey));
                         }
                     }
-                    instance = GetInstance(instantiatorKey, data);
+                    instance = CreateInstance(instantiatorKey, data);
                     if (instance != null)
                     {
                         return instance;
@@ -117,7 +152,14 @@ namespace HotAssembly
             throw new InstantiatorException($"Unknown error. Instantiator failed to produce an instance of {instantiatorKey}", null);
         }
 
-        private static T GetInstance(InstantiatorKey instantiatorKey, object[] data)
+        /// <summary>
+        /// Creates an instance of a generic type T.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="instantiatorKey"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        private static T CreateInstance(InstantiatorKey instantiatorKey, object[] data)
         {
             if (!Instantiators.ContainsKey(instantiatorKey))
                 return default(T);
@@ -138,10 +180,11 @@ namespace HotAssembly
         private readonly string _rootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HotAssemblyPackages");
 
         /// <summary>
-        /// This method creates instantiators for all of the types in the package that can be instantiated
+        /// Creates instantiators for all of the types in the package that can be instantiated
         /// </summary>
         /// <param name="instantiatorKey"></param>
         /// <returns></returns>
+        /// <exception cref="InstantiatorCreationException"></exception>
         private Dictionary<InstantiatorKey, Dictionary<string, Instantiator<T>>> CreateInstantiatorsForPackage(InstantiatorKey instantiatorKey)
         {
             string packagePath;
@@ -157,13 +200,13 @@ namespace HotAssembly
             {
                 throw new InstantiatorCreationException(
                     $"Package Retriever Failed to obtain the package {instantiatorKey.PackageId}.{instantiatorKey.Version}",
-                    e, true);
+                    e);
             }
 
             if (string.IsNullOrWhiteSpace(packagePath))
                 throw new InstantiatorCreationException(
                     $"Package Retriever Failed to obtain the package {instantiatorKey.PackageId}.{instantiatorKey.Version} from available sources",
-                    null, true);
+                    null);
 
             // find the directory where the dlls are
             var libPath = Directory.GetDirectories(Path.Combine(packagePath, "lib")).FirstOrDefault() ??
@@ -171,7 +214,7 @@ namespace HotAssembly
 
             var hotAssemblies = AssemblyResolver.DiscoverHotAssemblies(libPath, typeof (T));
             if (hotAssemblies != null && hotAssemblies.Any())
-                AssemblyResolver.AddPackageBasePath(libPath);
+                AssemblyResolver.AddPackageRootPath(libPath);
 
             if (hotAssemblies == null)
                 return returnDictionary;
@@ -189,13 +232,19 @@ namespace HotAssembly
                         !ctor.GetParameters().Any()
                             ? ""
                             : string.Join(", ", ctor.GetParameters().Select(p => p.ParameterType.FullName)),
-                    GetInstantiator));
+                    CreateInstantiator));
             }
 
             return returnDictionary;
         }
 
-        public static Instantiator<T> GetInstantiator(ConstructorInfo ctor)
+
+        /// <summary>
+        /// Creates a compiled instantiator based on the <paramref name="ctor"/>.
+        /// </summary>
+        /// <param name="ctor"></param>
+        /// <returns></returns>
+        public static Instantiator<T> CreateInstantiator(ConstructorInfo ctor)
         {
             var paramsInfo = ctor.GetParameters();
 

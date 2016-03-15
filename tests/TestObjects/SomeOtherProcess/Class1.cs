@@ -15,13 +15,13 @@
 //-----------------------------------------------------------------------
 using System;
 
-namespace HotAssembly
+namespace SomeOtherProcess
 {
-    [Serializable]
-    public class InstantiatorException : Exception
+    public class SomeThing 
     {
-        public InstantiatorException(string message, Exception innerException) : base(message, innerException)
+        public static string GetStuff()
         {
+            return Guid.NewGuid().ToString("N");
         }
     }
 }

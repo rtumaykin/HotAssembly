@@ -1,20 +1,51 @@
-﻿using System;
+﻿//-----------------------------------------------------------------------
+//Copyright 2015-2016 Roman Tumaykin
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+//-----------------------------------------------------------------------
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using HotAssembly.Package;
-using NUnit.Framework;
+using Xunit;
+using Xunit.Abstractions;
 
-namespace HotAssembly.UnitTests
+namespace HotAssembly.Tests
 {
-    [TestFixture]
     public class UnitTests
     {
-        [Test]
-        // Before running this test compile HotAssembly.Computer project!!!
+        private readonly ITestOutputHelper _output;
+        private readonly string _basePath;
+        private const string _nugetPackageLocation = @"..\..\..\TestObjects\HotAssembly.Computer.NugetPackage\bin";
+
+        public UnitTests(ITestOutputHelper output)
+        {
+            _output = output;
+
+            _basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                $"HotAssemblyPackages_Test_{Guid.NewGuid().ToString("N")}");
+
+            Directory.CreateDirectory(_basePath);
+        }
+
+        [Fact]
         public void Should_Successfully_Instantiate()
         {
-            var fp = new NugetPackageRetriever(new [] {@"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug"});
+            var configName = AppDomain.CurrentDomain.BaseDirectory.Split('\\').Last();
+            var fp = new NugetPackageRetriever(new [] {Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                        _nugetPackageLocation, configName)});
             var ha = new InstantiatorFactory<IComputer>(fp);
             {
                 // let it jit compile
@@ -28,15 +59,16 @@ namespace HotAssembly.UnitTests
                 var x = z.GetAppDomain();
             }
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
-            Assert.Pass("Total elapsed {0} ms.", elapsed);
-            Debug.WriteLine("{0}", elapsed);
+            _output.WriteLine($"Total elapsed {elapsed} ms.");
         }
 
-        [Test]
-        // Before running this test compile HotAssembly.Computer project!!!
+        [Fact]
         public void Should_Successfully_Instantiate_Multithreaded()
         {
-            var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
+            var configName = AppDomain.CurrentDomain.BaseDirectory.Split('\\').Last();
+            var fp = new NugetPackageRetriever(new[] {Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                        _nugetPackageLocation, configName)});
+
             var ha = new InstantiatorFactory<IComputer>(fp);
             var tasks = new List<Task>();
 
@@ -52,38 +84,38 @@ namespace HotAssembly.UnitTests
             Task.WaitAll(tasks.ToArray());
 
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
-            Assert.Pass("Total elapsed {0} ms.", elapsed);
-            Debug.WriteLine("{0}", elapsed);
+            _output.WriteLine($"Total elapsed {elapsed} ms.");
         }
 
-        [Test]
+        [Fact]
         // Before running this test compile HotAssembly.Computer project!!!
         public void Should_Fail_No_Ctor()
         {
-            Exception e = null;
-            try
-            {
-                var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
-                var ha = new InstantiatorFactory<IComputer>(fp);
-                var z = ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0", "HotAssembly.Computer.Computer"), 100);
-                var x = z.GetAppDomain();
-            }
-            catch (Exception ex)
-            {
-                e = ex;
-            }
+            var configName = AppDomain.CurrentDomain.BaseDirectory.Split('\\').Last();
+            var fp = new NugetPackageRetriever(new[] {Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                    _nugetPackageLocation, configName)});
 
-            Assert.IsNotNull(e);
+            var ha = new InstantiatorFactory<IComputer>(fp);
+            Exception ex = Assert.Throws<InstantiatorException>(() =>
+            {
+                var z =
+                    ha.Instantiate(
+                        new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0",
+                            "HotAssembly.Computer.Computer"), 100);
+            }
+        );
+
+            Assert.Equal(ex.GetType(), typeof(InstantiatorException));
         }
 
 
-        [Test]
+        [Fact]
         // Before running this test compile HotAssembly.Computer project!!!
         public void Should_Pass_One()
         {
-            var fp =
-                new NugetPackageRetriever(new[]
-                {@"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug"});
+            var configName = AppDomain.CurrentDomain.BaseDirectory.Split('\\').Last();
+            var fp = new NugetPackageRetriever(new[] {Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                    _nugetPackageLocation, configName)});
             var ha = new InstantiatorFactory<IComputer>(fp);
             var z =
                 ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0",
@@ -93,23 +125,6 @@ namespace HotAssembly.UnitTests
                 ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0",
                     "HotAssembly.Computer.Computer1"));
             var x1 = z1.GetAppDomain();
-        }
-        [Ignore("No longer checking for the Interface")]
-        [Test]
-        public void Should_Fail_Not_Interface()
-        {
-            Exception e = null;
-            try
-            {
-                var fp = new NugetPackageRetriever(new[] { @"C:\Development\Projects\HotAssembly\tests\HotAssembly.Computer.NugetPackage\bin\Debug" });
-                var ha = new InstantiatorFactory<UnitTests>(fp);
-            }
-            catch (InstantiatorCreationException ex)
-            {
-                e = ex;
-            }
-
-            Assert.IsNotNull(e);
         }
     }
 }

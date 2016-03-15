@@ -10,6 +10,9 @@
       <Platform>AnyCPU</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\HotAssembly.Computer\HotAssembly.Computer.csproj" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>f5b89734-28ae-43f6-8565-300aa794c546</ProjectGuid>
   </PropertyGroup>
@@ -35,8 +38,5 @@
     <Tags>HotAssembly.Computer.NugetPackage</Tags>
     <EmbedSourceFiles>true</EmbedSourceFiles>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\HotAssembly.Computer\HotAssembly.Computer.csproj" />
-  </ItemGroup>
   <Import Project="$(NuProjPath)\NuProj.targets" />
 </Project>
