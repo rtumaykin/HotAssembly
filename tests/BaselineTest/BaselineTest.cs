@@ -40,7 +40,7 @@ namespace BaselineTest
             for (int i = 0; i < 1000000; i++)
             {
                 var z = (IComputer) new Computer();
-                var x = z.GetAppDomain();
+                var x = z.Compute();
             }
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
             _output.WriteLine($"elapsed {elapsed} ms");

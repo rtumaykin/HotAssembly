@@ -21,7 +21,7 @@ namespace HotAssembly.Computer
     [Serializable]
     public class Computer : IComputer
     {
-        public string GetAppDomain()
+        public string Compute()
         {
             return $"{JsonConvert.SerializeObject(GetType().Assembly.Location)}-//{GetType()}!!!//FileName:{SomeOtherProcess.Proc1.GetStuff()}";
         }
@@ -29,7 +29,7 @@ namespace HotAssembly.Computer
 
     public class Computer1 : IComputer
     {
-        public string GetAppDomain()
+        public string Compute()
         {
             return $"{JsonConvert.SerializeObject(GetType().Assembly.Location)}-//{GetType()}!!!//FileName:{SomeOtherProcess.Proc1.GetStuff()}";
         }

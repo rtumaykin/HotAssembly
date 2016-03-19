@@ -29,7 +29,8 @@ namespace HotAssembly
         /// <summary>
         /// Collection of the base paths to the packages. Used to limit searches only within these paths and subfolders
         /// </summary>
-        private static readonly ConcurrentDictionary<string, bool> InstalledPackagesRootPaths = new ConcurrentDictionary<string, bool>();
+        private static readonly ConcurrentDictionary<string, bool> InstalledPackagesRootPaths =
+            new ConcurrentDictionary<string, bool>();
 
         /// <summary>
         /// Adds a new path to the base packages paths (<see cref="InstalledPackagesRootPaths"/>). If a path already exists, does nothing.
@@ -38,7 +39,7 @@ namespace HotAssembly
         public static void AddPackageRootPath(string rootPath)
         {
             InstalledPackagesRootPaths.TryAdd(rootPath, false);
-        } 
+        }
 
         /// <summary>
         /// Event Handler which resolves the assembly full name to an assembly, using the calling assembly path as a 
@@ -55,6 +56,7 @@ namespace HotAssembly
 
             return ResolveByFullAssemblyNameInternal(basePath, assemblyFullName);
         }
+
         /// <summary>
         /// Event Handler which resolves the assembly full name to an assembly, using the calling assembly path as a 
         /// search folder. Search is only performed if the caller path is one of the paths contained in 
@@ -115,38 +117,41 @@ namespace HotAssembly
         /// <returns></returns>
         public static Assembly[] DiscoverHotAssemblies(string basePath, Type baseType)
         {
-            AppDomain newDomain = null;
-            try
-            {
-                var newDomainSetup = new AppDomainSetup()
+
+            var files = Directory.GetFiles(basePath, "*.*");
+            return files.Where(
+                p =>
                 {
-                    ApplicationBase = AppDomain.CurrentDomain.BaseDirectory
-                };
+                    AppDomain newDomain = null;
+                    try
+                    {
+                        var newDomainSetup = new AppDomainSetup()
+                        {
+                            ApplicationBase = AppDomain.CurrentDomain.BaseDirectory
+                        };
 
-                newDomain = AppDomain.CreateDomain(Guid.NewGuid().ToString("N"), null, newDomainSetup);
-                var instanceInNewDomain = (ResolverAppDomainAgent) newDomain.CreateInstanceFromAndUnwrap(
-                    typeof (ResolverAppDomainAgent).Assembly.Location,
-                    typeof (ResolverAppDomainAgent).FullName,
-                    true,
-                    BindingFlags.Default,
-                    null,
-                    null,
-                    null,
-                    null);
+                        newDomain = AppDomain.CreateDomain(Guid.NewGuid().ToString("N"), null, newDomainSetup);
+                        var instanceInNewDomain = (ResolverAppDomainAgent) newDomain.CreateInstanceFromAndUnwrap(
+                            typeof (ResolverAppDomainAgent).Assembly.Location,
+                            typeof (ResolverAppDomainAgent).FullName,
+                            true,
+                            BindingFlags.Default,
+                            null,
+                            null,
+                            null,
+                            null);
 
-                var files = Directory.GetFiles(basePath, "*.*");
-                return files.Where(
-                    p =>
-                        instanceInNewDomain.DoesAssemblyContainInheritedTypes(p,
-                            baseType))
-                    .Select(Assembly.LoadFile)
-                    .ToArray();
-            }
-            finally
-            {
-                if (newDomain != null)
-                    AppDomain.Unload(newDomain);
-            }
+                        return instanceInNewDomain.DoesAssemblyContainInheritedTypes(p,
+                            baseType);
+                    }
+                    finally
+                    {
+                        if (newDomain != null)
+                            AppDomain.Unload(newDomain);
+                    }
+                })
+                .Select(Assembly.LoadFile)
+                .ToArray();
         }
     }
 

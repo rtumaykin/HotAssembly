@@ -56,7 +56,7 @@ namespace HotAssembly.Tests
             for (var i = 0; i < 1000000; i++)
             {
                 var z = ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0", "HotAssembly.Computer.Computer"));
-                var x = z.GetAppDomain();
+                var x = z.Compute();
             }
             var elapsed = DateTime.Now.Subtract(start).TotalMilliseconds;
             _output.WriteLine($"Total elapsed {elapsed} ms.");
@@ -78,7 +78,7 @@ namespace HotAssembly.Tests
                 tasks.Add(Task.Run(() =>
                 {
                     var z = ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0", "HotAssembly.Computer.Computer"));
-                    var x = z.GetAppDomain();
+                    var x = z.Compute();
                 }));
             }
             Task.WaitAll(tasks.ToArray());
@@ -88,7 +88,6 @@ namespace HotAssembly.Tests
         }
 
         [Fact]
-        // Before running this test compile HotAssembly.Computer project!!!
         public void Should_Fail_No_Ctor()
         {
             var configName = AppDomain.CurrentDomain.BaseDirectory.Split('\\').Last();
@@ -110,7 +109,6 @@ namespace HotAssembly.Tests
 
 
         [Fact]
-        // Before running this test compile HotAssembly.Computer project!!!
         public void Should_Pass_One()
         {
             var configName = AppDomain.CurrentDomain.BaseDirectory.Split('\\').Last();
@@ -120,11 +118,11 @@ namespace HotAssembly.Tests
             var z =
                 ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0",
                     "HotAssembly.Computer.Computer"));
-            var x = z.GetAppDomain();
+            var x = z.Compute();
             var z1 =
                 ha.Instantiate(new InstantiatorKey("HotAssembly.Computer.NugetPackage", "1.0.0",
                     "HotAssembly.Computer.Computer1"));
-            var x1 = z1.GetAppDomain();
+            var x1 = z1.Compute();
         }
 
         public void Dispose()
