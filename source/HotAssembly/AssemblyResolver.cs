@@ -15,6 +15,7 @@
 //-----------------------------------------------------------------------
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -24,13 +25,19 @@ namespace HotAssembly
     /// <summary>
     /// Helper class to perform actions related to Assembly reference resolution
     /// </summary>
-    public class AssemblyResolver
+    public class AssemblyResolver<T> where T:class
     {
         /// <summary>
         /// Collection of the base paths to the packages. Used to limit searches only within these paths and subfolders
         /// </summary>
-        private static readonly ConcurrentDictionary<string, bool> InstalledPackagesRootPaths =
-            new ConcurrentDictionary<string, bool>();
+        private static readonly ConcurrentDictionary<string, bool> InstalledPackagesRootPaths = new ConcurrentDictionary<string, bool>();
+
+        static AssemblyResolver()
+        {
+            InstalledPackagesRootPaths.TryAdd(AppDomain.CurrentDomain.BaseDirectory, false);
+        } 
+
+        private static readonly string SharedTypeAssemblyName = typeof (T).Assembly.FullName;
 
         /// <summary>
         /// Adds a new path to the base packages paths (<see cref="InstalledPackagesRootPaths"/>). If a path already exists, does nothing.
@@ -51,7 +58,8 @@ namespace HotAssembly
         /// <returns></returns>
         public static Assembly ResolveByFullAssemblyName(object sender, ResolveEventArgs args)
         {
-            var basePath = Path.GetDirectoryName(args.RequestingAssembly.Location);
+//            Console.WriteLine($"Assembly {args.RequestingAssembly?.FullName} requested resolution of assembly {args.Name}");
+            var basePath = (args.RequestingAssembly == null || args.Name == SharedTypeAssemblyName) ? AppDomain.CurrentDomain.BaseDirectory : Path.GetDirectoryName(args.RequestingAssembly.Location);
             var assemblyFullName = args.Name;
 
             return ResolveByFullAssemblyNameInternal(basePath, assemblyFullName);
@@ -75,6 +83,22 @@ namespace HotAssembly
             // only resolve the paths that have been added by HotAssembly
             if (!InstalledPackagesRootPaths.TryGetValue(basePath, out dummyOutValue))
                 return null;
+
+            // check the currently loaded assemblies
+            Assembly foundAssembly = null;
+            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (a.FullName == assemblyFullName &&
+                    string.Compare(Path.GetFullPath(Path.GetDirectoryName(a.Location)).TrimEnd('\\'),
+                        Path.GetFullPath(basePath).TrimEnd('\\'), StringComparison.InvariantCultureIgnoreCase) == 0)
+                {
+                    foundAssembly = a;
+                    break;
+                }
+            }
+
+            if (foundAssembly != null)
+                return foundAssembly;
 
             AppDomain newDomain = null;
 
@@ -115,8 +139,9 @@ namespace HotAssembly
         /// <param name="basePath">Path to search in, including subfolders</param>
         /// <param name="baseType">Base Type of the types we are searching for.</param>
         /// <returns></returns>
-        public static Assembly[] DiscoverHotAssemblies(string basePath, Type baseType)
+        public static Assembly[] DiscoverHotAssemblies(string basePath)
         {
+            var baseType = typeof (T);
 
             var files = Directory.GetFiles(basePath, "*.*");
             return files.Where(

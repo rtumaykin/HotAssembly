@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -34,8 +35,8 @@ namespace HotAssembly
 
         static InstantiatorFactory()
         {
-            AppDomain.CurrentDomain.AssemblyResolve += AssemblyResolver.ResolveByFullAssemblyName;
-        } 
+            AppDomain.CurrentDomain.AssemblyResolve += AssemblyResolver<T>.ResolveByFullAssemblyName;
+        }
 
 
         /// <summary>
@@ -212,9 +213,9 @@ namespace HotAssembly
             var libPath = Directory.GetDirectories(Path.Combine(packagePath, "lib")).FirstOrDefault() ??
                           Path.Combine(packagePath, "lib");
 
-            var hotAssemblies = AssemblyResolver.DiscoverHotAssemblies(libPath, typeof (T));
+            var hotAssemblies = AssemblyResolver<T>.DiscoverHotAssemblies(libPath);
             if (hotAssemblies != null && hotAssemblies.Any())
-                AssemblyResolver.AddPackageRootPath(libPath);
+                AssemblyResolver<T>.AddPackageRootPath(libPath);
 
             if (hotAssemblies == null)
                 return returnDictionary;
