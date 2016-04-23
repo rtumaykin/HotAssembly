@@ -16,12 +16,12 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
+using HotAssembly.AssemblyResolver;
 using HotAssembly.Package;
 using NuGet;
 
@@ -35,7 +35,7 @@ namespace HotAssembly
 
         static InstantiatorFactory()
         {
-            AppDomain.CurrentDomain.AssemblyResolve += AssemblyResolver<T>.ResolveByFullAssemblyName;
+            AppDomain.CurrentDomain.AssemblyResolve += PluginContext<T>.ResolveByFullAssemblyName;
         }
 
 
@@ -213,9 +213,7 @@ namespace HotAssembly
             var libPath = Directory.GetDirectories(Path.Combine(packagePath, "lib")).FirstOrDefault() ??
                           Path.Combine(packagePath, "lib");
 
-            var hotAssemblies = AssemblyResolver<T>.DiscoverHotAssemblies(libPath);
-            if (hotAssemblies != null && hotAssemblies.Any())
-                AssemblyResolver<T>.AddPackageRootPath(libPath);
+            var hotAssemblies = PluginContext<T>.DiscoverHotAssemblies(libPath);
 
             if (hotAssemblies == null)
                 return returnDictionary;

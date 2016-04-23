@@ -62,7 +62,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyResolver.cs" />
+    <Compile Include="AssemblyResolver\PluginContext.cs" />
+    <Compile Include="AssemblyResolver\Common.cs" />
+    <Compile Include="AssemblyResolver\DefaultContext.cs" />
     <Compile Include="InstantiatorCreationException.cs" />
     <Compile Include="InstantiatorException.cs" />
     <Compile Include="InstantiatorFactory.cs" />
