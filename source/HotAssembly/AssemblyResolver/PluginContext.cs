@@ -44,9 +44,19 @@ namespace HotAssembly.AssemblyResolver
                 return DefaultContext.Resolve(AppDomain.CurrentDomain, newArgs);
             }
 
+            var searchInPath = Common.NormalizePath(Path.GetDirectoryName(args.RequestingAssembly.Location));
+
+            // Check if this assembly has already been loaded
+            var loadedAssembly =
+                AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(
+                        a => !string.IsNullOrWhiteSpace(a.Location) &&
+                                Common.NormalizePath(Path.GetDirectoryName(a.Location)) ==
+                                searchInPath && a.FullName == args.Name);
+            if (loadedAssembly != null)
+                return loadedAssembly;
             return
-                Common.ResolveByFullAssemblyNameInternal(
-                    Common.NormalizePath(Path.GetDirectoryName(args.RequestingAssembly.Location)), args.Name);
+                Common.ResolveByFullAssemblyNameInternal(searchInPath, args.Name);
         }
 
 

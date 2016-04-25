@@ -10,14 +10,19 @@ namespace HotAssembly.AssemblyResolver
 {
     public static class DefaultContext
     {
-        private static bool resolverWiredUp = false;
+        private static readonly object ResolverLock = new object();
+
+        private static bool _resolverWiredUp;
         public static void WireUpResolver()
         {
-            if (resolverWiredUp)
-                return;
+            lock (ResolverLock) 
+            {
+                if (_resolverWiredUp)
+                    return;
 
-            AppDomain.CurrentDomain.AssemblyResolve += Resolve;
-            resolverWiredUp = true;
+                AppDomain.CurrentDomain.AssemblyResolve += Resolve;
+                _resolverWiredUp = true;
+            }
         }
 
         public static Assembly Resolve(object sender, ResolveEventArgs args)
@@ -51,11 +56,10 @@ namespace HotAssembly.AssemblyResolver
                 AppDomain.CurrentDomain.GetAssemblies()
                     .FirstOrDefault(
                         a => !string.IsNullOrWhiteSpace(a.Location) &&
-                            Common.NormalizePath(Path.GetDirectoryName(a.Location)) ==
-                            domainBaseDirectory && a.FullName == args.Name);
+                                Common.NormalizePath(Path.GetDirectoryName(a.Location)) ==
+                                domainBaseDirectory && a.FullName == args.Name);
             if (loadedAssembly != null)
                 return loadedAssembly;
-
 
             return Common.ResolveByFullAssemblyNameInternal(domainBaseDirectory, args.Name);
         }

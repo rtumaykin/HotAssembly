@@ -43,7 +43,11 @@ namespace HotAssembly.AssemblyResolver
                 var assemblyPath =
                     files.FirstOrDefault(p => instanceInNewDomain.CompareAssemblyFullName(p, assemblyFullName));
 
-                return !string.IsNullOrWhiteSpace(assemblyPath) ? Assembly.LoadFile(assemblyPath) : null;
+                return !string.IsNullOrWhiteSpace(assemblyPath)
+                    ? (basePath == AppDomain.CurrentDomain.BaseDirectory
+                        ? Assembly.LoadFrom(assemblyPath)
+                        : Assembly.LoadFile(assemblyPath))
+                    : null;
             }
             finally
             {
