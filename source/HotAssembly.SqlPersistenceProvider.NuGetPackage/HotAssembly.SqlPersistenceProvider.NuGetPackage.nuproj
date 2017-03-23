@@ -31,7 +31,7 @@
     <Copyright>Copyright © 2015 Roman Tumaykin</Copyright>
     <Tags>HotAssembly</Tags>
     <EmbedSourceFiles>true</EmbedSourceFiles>
-    <Version>1.0.7</Version>
+    <Version>1.0.8</Version>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Readme.txt" />
