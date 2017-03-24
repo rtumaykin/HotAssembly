@@ -28,10 +28,10 @@
     </ReleaseNotes>
     <ProjectUrl>https://github.com/rtumaykin/HotAssembly</ProjectUrl>
     <LicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</LicenseUrl>
-    <Copyright>Copyright © 2015 Roman Tumaykin</Copyright>
+    <Copyright>Copyright © 2017 Roman Tumaykin</Copyright>
     <Tags>HotAssembly</Tags>
     <EmbedSourceFiles>true</EmbedSourceFiles>
-    <Version>1.0.8</Version>
+    <Version>1.0.9</Version>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Readme.txt" />
